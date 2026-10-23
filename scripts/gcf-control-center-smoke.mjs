@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {startControlCenter} from '../dist/gcfControlCenter.js';
+const temp=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'gcf-center-')));
+const manifest=path.join(temp,'projects.json');
+const repo=path.join(temp,"repo '$() `x`");fs.mkdirSync(repo);fs.mkdirSync(path.join(repo,'.git'));
+const cc=await startControlCenter({manifest,sourceRoot:process.cwd()});
+const origin=cc.origin;
+const post=(url,data,headers={})=>fetch(origin+url,{method:'POST',headers:{origin,'content-type':'application/json',...headers},body:JSON.stringify(data)});
+try {
+  assert.equal((await fetch(origin+'/owner/status')).status,401);
+  assert.equal((await fetch(origin+'/owner/status',{headers:{authorization:'Bearer any'}})).status,401);
+  assert.equal(await new Promise((resolve,reject)=>{http.get(origin+'/',{headers:{host:'evil.test'}},r=>{r.resume();resolve(r.statusCode);}).on('error',reject);}),403);
+  assert.equal((await fetch(origin+'/',{headers:{origin:'https://evil.test'}})).status,403);
+  assert.equal((await fetch(origin+'/?code=secret')).status,400);
+  assert.equal((await post('/owner/session',{code:cc.bootstrapCode},{origin:'null'})).status,403);
+  assert.equal((await post('/owner/session',{code:'wrong'})).status,401);
+  const auth=await post('/owner/session',{code:cc.bootstrapCode});assert.equal(auth.status,200);
+  const cookie=auth.headers.get('set-cookie');assert.match(cookie,/HttpOnly/);assert.match(cookie,/Secure/);assert.match(cookie,/SameSite=Strict/);
+  const headers={cookie:cookie.split(';')[0]};
+  assert.equal((await post('/owner/session',{code:cc.bootstrapCode})).status,401);
+  assert.equal((await fetch(origin+'/owner/status',{headers})).status,200);
+  assert.equal((await fetch(origin+'/owner/status',{headers:{cookie:headers.cookie+'; '+headers.cookie}})).status,401);
+  const html=await (await fetch(origin+'/',{headers})).text();
+  const csrf=html.match(/[a-f0-9]{64}/g)?.find(x=>x!==cc.bootstrapCode);assert.ok(csrf,'page includes CSRF');
+  assert.equal((await post('/owner/preview',{action:'add',path:repo},headers)).status,403);
+  headers['x-gcf-csrf']=csrf;
+  const preview=await post('/owner/preview',{action:'add',path:repo},headers);assert.equal(preview.status,200);
+  const result=await preview.json();assert.deepEqual(result.roots,[repo]);assert.ok(result.commands[1].includes("'\\''"));assert.equal(fs.existsSync(manifest),false);
+  fs.writeFileSync(manifest,JSON.stringify({version:1,roots:[repo]}));
+  assert.equal((await post('/owner/preview',{action:'add',path:repo},headers)).status,400);
+  const link=path.join(temp,'alias');fs.symlinkSync(repo,link);
+  assert.equal((await post('/owner/preview',{action:'add',path:link},headers)).status,400);
+  assert.equal((await post('/owner/preview',{action:'remove',path:repo},headers)).status,400);
+  assert.equal((await post('/owner/preview',{action:'recover',path:repo},headers)).status,400);
+  const nested=path.join(repo,'nested');fs.mkdirSync(nested);fs.mkdirSync(path.join(nested,'.git'));
+  assert.equal((await post('/owner/preview',{action:'add',path:nested},headers)).status,400);
+  const missing=path.join(temp,'missing');fs.writeFileSync(manifest,JSON.stringify({version:1,roots:[missing]}));
+  const recovery=await post('/owner/preview',{action:'recover',path:repo},headers);assert.equal(recovery.status,200);const recovered=await recovery.json();assert.deepEqual(recovered.roots,[repo]);assert.deepEqual(recovered.removedMissing,[missing]);
+  const simpleAdd=await post('/owner/preview',{action:'add',path:repo},headers);assert.equal(simpleAdd.status,200);const combined=await simpleAdd.json();assert.deepEqual(combined.roots,[repo]);assert.deepEqual(combined.removedMissing,[missing]);assert.match(combined.commands.join(' '),/--replace-missing/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(manifest)).roots,[missing]);
+  assert.equal((await post('/owner/preview',{action:'add',path:'x'.repeat(9000)},headers)).status,413);
+  assert.equal((await post('/owner/save',{},headers)).status,404);
+  for(let i=0;i<125;i++) await fetch(origin+'/');
+  assert.equal((await fetch(origin+'/')).status,429);
+  const realNow=Date.now;
+  try {Date.now=()=>realNow()+21*60_000;assert.equal((await fetch(origin+'/owner/status',{headers})).status,401);}
+  finally {Date.now=realNow;}
+  console.log('PASS owner Control Center: auth, one-use bootstrap, cookie flags, Host/Origin, CSRF, body/rate limits, canonical previews and no writes');
+} finally {await new Promise(r=>cc.server.close(r));fs.rmSync(temp,{recursive:true,force:true});}

@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.DS_Store
+.env
+.env.*
+*.tgz
+.ai-bridge/
+.hallmark/
+.playwright-cli/
+output/
+CODEXPRO_MCP_REPORT.md
+*.local.md
+*.local.json
+*.log
+SOCIAL_POSTS.md
+LAUNCH_COPY.md
+
+# Owner-local runtime and generated verification artifacts
+.codexbridge/
+coverage/
+*.tsbuildinfo

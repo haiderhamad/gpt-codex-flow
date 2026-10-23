@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {randomUUID} from 'node:crypto';
+import {inspectOwnerProjectHandoff} from '../dist/gcfTaskHandoffStatus.js';
+const base=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'gcf-m2-')));
+try{
+ const project=path.join(base,'project');fs.mkdirSync(project);
+ const manifest=path.join(base,'owner','projects.json');fs.mkdirSync(path.dirname(manifest));
+ fs.writeFileSync(manifest,JSON.stringify({version:1,roots:[project]}));
+ assert.equal(inspectOwnerProjectHandoff(manifest,project).status,'no_active_task');
+ assert.throws(()=>inspectOwnerProjectHandoff(manifest,base),/approved/);
+ const context=path.join(project,'.ai-bridge');fs.mkdirSync(context);
+ const id='task_'+randomUUID();
+ fs.writeFileSync(path.join(context,'current-task.json'),JSON.stringify({schema_version:1,task_id:id,goal:'Research API architecture and implement tests',target_paths:[],plan_steps:[],status:'in_progress',created_at:new Date().toISOString(),updated_at:new Date().toISOString()}));
+ const inbox=path.join(context,'task-inbox');fs.mkdirSync(inbox);
+ const message='inbox_'+randomUUID();
+ fs.writeFileSync(path.join(inbox,message+'.json'),JSON.stringify({schema_version:1,id:message,task_id:id,from:'chatgpt_lead',to:'codex_lead',title:'Implement',request:'Write tests',created_at:new Date().toISOString(),state:'pending'}));
+ const result=inspectOwnerProjectHandoff(manifest,project);
+ assert.equal(result.status,'active_task_found');
+ assert.equal(result.inbox.length,1);
+ assert.equal(result.active_task.task_id,id);
+ assert.equal(result.stages.some(x=>x.matching_inbox_ids.includes(message)),true);
+ assert.equal(result.auto_execution,false);
+ assert.equal(result.client_identity_verified,false);
+ fs.writeFileSync(path.join(inbox,'wrong.txt'),'unsafe');
+ assert.throws(()=>inspectOwnerProjectHandoff(manifest,project),/Unexpected Task Inbox/);
+ console.log('PASS M2 owner-only advisory task/inbox state, exact ID linkage, denied roots and malformed inbox.');
+}finally{fs.rmSync(base,{recursive:true,force:true});}

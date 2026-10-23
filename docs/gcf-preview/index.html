@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="GPT Codex Flow connects ChatGPT and Codex to owner-approved Git repositories. Coordinate tasks with an MCP Task Inbox, verify changes, and resume across sessions.">
+<meta name="theme-color" content="#f3f7fa"><title>GPT Codex Flow — One Git workflow for ChatGPT and Codex</title>
+
+<link rel="stylesheet" href="./theme-light.css"></head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header"><div class="top wrap"><a class="brand" href="#top"><span class="brandmark" aria-hidden="true"><img src="./brand-mark.svg" width="40" height="40" alt=""></span>GPT Codex Flow</a><nav class="nav" aria-label="Main"><a href="#workflow">How it works</a><a href="#capabilities">Features</a><a href="#connect">Connect</a><a href="#dashboard">Control Center</a><a class="git" href="#connect">Setup</a></nav></div></header>
+<main id="main" tabindex="-1">
+<section id="top" class="hero wrap">
+<div><span class="overline">ChatGPT + Codex, connected by MCP</span><h1>Two coding assistants.<br>One project workflow.</h1><p>Both assistants can code. Share tasks, review Git changes, and resume with the context saved in your project.</p><div class="cta"><a class="button primary" href="#connect">Get started</a><a class="button" href="#workflow">See how it works</a></div><p class="micro">Local Control Center. Your folders. Your permissions.</p></div>
+<figure class="illustration"><img class="scene-image" src="./architecture-light.svg" width="640" height="460" loading="eager" decoding="async" alt="ChatGPT and Codex both code through approved tools. GPT Codex Flow carries tasks and results through MCP, Task Inbox and Transfer Control to approved projects."></figure>
+</section>
+<section id="workflow" class="section flow-band"><div class="wrap"><h2>Hand off the task.<br>Keep the context.</h2><div class="story">
+<article><span class="story-number">1</span><h3>Choose a project</h3><p>Approve a folder and select it in your MCP client.</p></article>
+<article><span class="story-number">2</span><h3>Code in either client</h3><p>Pass a scoped task through the Inbox. Each client uses its own permitted tools.</p></article>
+<article><span class="story-number">3</span><h3>Review and resume</h3><p>Check the Git diff and test evidence. Reload the saved task in a fresh conversation.</p></article>
+</div></div></section>
+<section id="orchestration" class="section wrap" aria-labelledby="orchestration-title"><h2 id="orchestration-title">Choose who leads.</h2><p class="lead">Three advisory lead choices. Execution permissions stay separate.</p><div class="mode-grid">
+<article><span class="mode-icon" aria-hidden="true">G</span><h3>ChatGPT Lead</h3><p>Code, debug, test or review through authorized MCP tools.</p></article>
+<article><span class="mode-icon mode-code" aria-hidden="true">&lt;/&gt;</span><h3>Codex Lead</h3><p>Work in the approved repository with local Codex.</p></article>
+<article><span class="mode-icon" aria-hidden="true">↔</span><h3>Auto — Recommend</h3><p>Suggest a lead from task signals. No automatic model launch.</p></article>
+</div><div class="transfer-note"><strong>Transfer Control</strong><span>Request, accept or cancel a handoff in either direction. Acceptance never grants execution permission.</span></div></section>
+<section id="capabilities" class="section wrap divider"><h2>The essentials, connected.</h2><div class="feature-list">
+<article class="feature"><h3>Approved projects</h3><p>Choose folders explicitly. Keep project context scoped.</p></article>
+<article class="feature"><h3>Task Inbox</h3><p>Save tasks, handoff notes and correlated results per project.</p></article>
+<article class="feature"><h3>Skills &amp; Agent Profiles</h3><p>Find local instructions for coding and review. Profiles do not start agents.</p></article>
+<article class="feature"><h3>Parallel Git worktrees</h3><p>Separate working copies and inspect combined changes. Coordination is fixture-tested.</p></article>
+<article class="feature"><h3>Git review &amp; verification</h3><p>Inspect real diffs and test evidence before continuing.</p></article>
+<article class="feature"><h3>Local Control Center</h3><p>Manage Projects, Connections, Workflow and Status in your browser.</p></article>
+</div>
+<div id="use-cases" class="continuity"><h3>Come back to a task with its recorded context.</h3><img class="usecase-visual" src="./use-case-flow.svg" width="1080" height="260" loading="lazy" alt="Illustrative sequence: Task Inbox carries context, either client returns Git diffs and tests, and a fresh conversation resumes the saved project task."><p class="micro">Recorded GCF activity only. No hidden conversation sync or automatic model switching.</p></div></section>
+<section id="connect" class="section setup"><div class="wrap"><h2>Start with one folder.</h2><p class="lead">Node.js 20+ and a local source checkout. Git is required for diffs and handoffs. The GitHub repository and npm distribution are not published yet.</p>
+<div class="setup-row"><div><span class="stepno">STEP 1</span><h3>Prepare the bridge</h3><p>First open Terminal in the folder containing this project’s <code>package-lock.json</code>. Replace the example path with your actual checkout location. Do not run from <code>~</code>.</p></div><div class="terminal"><div class="termhead"><span>Terminal · project folder</span><button type="button" class="copy" data-copy="prepare">Copy</button></div><pre id="prepare">cd /path/to/gpt-codex-flow
+npm ci</pre></div></div>
+<div class="setup-row"><div><span class="stepno">STEP 2</span><h3>Open Control Center</h3><p>Paste the one-time Terminal code. Add Folder, confirm locally, then open Connections.</p></div><div><div class="terminal"><div class="termhead"><span>Recommended: local browser setup</span><button type="button" class="copy" data-copy="approve-preview">Copy</button></div><pre id="approve-preview">npm run gcf:ui</pre></div><div class="terminal" style="margin-top:11px"><div class="termhead"><span>Optional: check prerequisites</span><button type="button" class="copy" data-copy="approve-run">Copy</button></div><pre id="approve-run">npm run gcf:doctor</pre></div></div></div>
+<div class="setup-row"><div><span class="stepno">STEP 3</span><h3>Connect and verify</h3><p>Start Cloudflare Quick Tunnel manually in Control Center. Verify access from ChatGPT.</p></div><div><div class="terminal"><div class="termhead"><span>Terminal · health and connection instructions</span><button type="button" class="copy" data-copy="guide">Copy</button></div><pre id="guide">npm run gcf:doctor</pre></div><p class="connect-info">Local verification checks folder access. Confirm the connection separately in your actual client.</p></div></div>
+
+<div class="connect-panel"><h3>Connect ChatGPT with Cloudflare Quick Tunnel</h3><p>Open Control Center, approve a project, and start the tunnel manually. Copy its private connection URL into ChatGPT and verify access.</p><div class="terminal"><div class="termhead"><span>Open Control Center</span><button type="button" class="copy" data-copy="conncode">Copy</button></div><pre id="conncode">npm run gcf:ui</pre></div><p class="connect-info"><strong>Private URL:</strong> keep the embedded token secret. The URL changes on restart. Tunnel ready does not prove ChatGPT is connected.</p></div>
+<section class="access-guide" id="access-levels" aria-labelledby="access-levels-title">
+  <div class="access-heading"><h3 id="access-levels-title">Choose what ChatGPT can do</h3><p>Connection permissions. Handoff notes remain available at every level.</p></div>
+  <div class="access-scroll">
+    <table class="access-table">
+      <caption class="visually-hidden">Connection access levels compared by source code editing, terminal commands, and handoff writing</caption>
+      <thead><tr><th scope="col">Access level</th><th scope="col">Edit source</th><th scope="col">Terminal</th><th scope="col">Write Handoff</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Read Only <span class="access-sub">(source code)</span></th><td data-label="Edit source">No</td><td data-label="Terminal">No</td><td data-label="Write Handoff" class="access-yes">Yes</td></tr>
+        <tr><th scope="row">Edit Files</th><td data-label="Edit source">Yes</td><td data-label="Terminal">No</td><td data-label="Write Handoff" class="access-yes">Yes</td></tr>
+        <tr><th scope="row">Edit &amp; Test</th><td data-label="Edit source">Yes</td><td data-label="Terminal">Allowlisted commands</td><td data-label="Write Handoff" class="access-yes">Yes</td></tr>
+        <tr><th scope="row">Full Access <span class="access-sub">(Advanced)</span></th><td data-label="Edit source">Yes</td><td data-label="Terminal">Full Bash · high risk</td><td data-label="Write Handoff" class="access-yes">Yes</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="access-footnote"><strong>Read Only protects your source files, not handoff notes:</strong> GCF can still save scoped future-task instructions inside <code>.ai-bridge/</code>. These notes never launch Codex or authorize execution. Command allowlists are not a sandbox; project scripts run locally. Native Codex sandbox settings apply only to Codex-launched work. Full Access is manual and high risk.</p>
+</section>
+<div class="note"><strong>Cloudflare Quick only:</strong> manually start and stop it in Control Center. A previous isolated ChatGPT connection succeeded; test your own connection. Keep the token-bearing URL private.</div>
+</div></section>
+<section id="dashboard" class="section wrap"><div class="showcase"><div><h2>Your project.<br>Your Control Center.</h2><p>Approve a folder, connect Codex or ChatGPT, and control access locally.</p><p>Projects, Connections, Workflow and Status. Runs locally on your computer, separate from this website.</p><a class="button" href="#connect">Open setup instructions</a></div><figure class="admin-capture"><img src="./screenshots/control-center-demo.png" width="1440" height="900" loading="lazy" alt="GPT Codex Flow Control Center with Projects, Connections, Workflow, Status and disposable demo folders"><figcaption>Local Control Center · sanitized demo data · no live credentials</figcaption></figure></div></section>
+<section class="final"><div class="wrap"><h2>Pick up where you left off.</h2><p>Connect a folder. Share a task. Review the result.</p><div class="cta"><a class="button primary" href="#connect">Get started</a><a class="button" href="#capabilities">Explore features</a></div><p class="legal" style="margin-top:18px">Local source preview · GitHub and npm publication pending</p></div></section>
+</main><span id="copy-status" class="visually-hidden" role="status"></span><footer><div class="wrap foot"><span>© 2026 GPT Codex Flow · MIT licensed source with applicable notices</span><div class="footerlinks"><a href="#workflow">Workflow</a><a href="#connect">Connect</a><a href="#dashboard">Control Center</a></div></div></footer>
+<script>
+const header=document.querySelector('.site-header');
+function updateHeaderOffset(){
+  document.documentElement.style.setProperty('--nav-offset',Math.ceil(header.getBoundingClientRect().height+14)+'px');
+}
+updateHeaderOffset();
+if('ResizeObserver' in window)new ResizeObserver(updateHeaderOffset).observe(header);
+window.addEventListener('resize',updateHeaderOffset);
+window.addEventListener('load',()=>{
+  updateHeaderOffset();
+  if(location.hash&&document.getElementById(decodeURIComponent(location.hash.slice(1)))){
+    document.getElementById(decodeURIComponent(location.hash.slice(1))).scrollIntoView({behavior:'instant'});
+  }
+});
+const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+function syncReducedMotion(){
+  for(const img of document.querySelectorAll('.scene-image,.usecase-visual')){
+    const source=img.getAttribute('src').split('#')[0];
+    const next=source+(motionPreference.matches?'#paused':'');
+    if(img.getAttribute('src')!==next)img.setAttribute('src',next);
+  }
+}
+motionPreference.addEventListener('change',syncReducedMotion);
+syncReducedMotion();
+
+for(const button of document.querySelectorAll("button.copy")){
+  button.addEventListener("click",async()=>{
+    const element=document.getElementById(button.dataset.copy);
+    if(!element)return;
+    const original=button.dataset.original||button.textContent;
+    button.dataset.original=original;
+    try{await navigator.clipboard.writeText(element.textContent);button.textContent="Copied ✓"}
+    catch{
+      const range=document.createRange();range.selectNodeContents(element);
+      const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+      button.textContent="Selected";
+    }
+    document.getElementById("copy-status").textContent=button.textContent==="Selected"?"Copy unavailable. Code selected; use your system copy shortcut.":"Command copied.";
+    button.setAttribute("aria-label",button.textContent+" code");
+    window.setTimeout(()=>{button.textContent=original;button.setAttribute("aria-label",original+" code")},2000);
+  });
+}
+</script></body></html>

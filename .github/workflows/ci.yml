@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Smoke Test
+        run: npm run smoke
+
+      - name: Public source imports, entrypoints and documentation links
+        run: npm run test:gcf-release-integrity
+
+      - name: Native trial TTY regression
+        run: npm run test:gcf-parallel-native-trial
+
+      - name: Check Package Contents
+        run: npm pack --dry-run
+
+  windows-portability:
+    name: Windows build and sandbox-argv contract (no model)
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install (no lifecycle scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: TypeScript build on Windows
+        run: npm run build
+
+      - name: Native Codex runner sandbox-argv contract (no Codex execution)
+        run: npm run test:gcf-native-sandbox-contract
+
+      - name: Cross-platform sandbox planning (no Codex execution)
+        run: npm run test:sandbox-plan
+
+      - name: Write policy regression
+        run: npm run test:write-mode
+
+      - name: Documented limitations
+        run: echo "This tests Windows Node portability and argv, not actual Codex Windows OS sandbox isolation."

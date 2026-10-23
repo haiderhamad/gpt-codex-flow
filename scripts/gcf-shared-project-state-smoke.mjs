@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
+import {readSharedProjectState} from '../dist/gcfSharedProjectState.js';
+const tmp=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'gcf-state-test-')));
+const root=path.join(tmp,'project');fs.mkdirSync(root);
+const config={allowedRoots:[root],contextDir:'.ai-bridge',maxOutputBytes:10000};
+const ws={root,id:'ws_test',openedAt:new Date().toISOString()};
+const git=(...args)=>spawnSync('git',args,{cwd:root,encoding:'utf8'});
+try{
+ let s=readSharedProjectState(config,ws);
+ assert.equal(s.task,null);assert.equal(s.git.available,false);assert.equal(s.continuity.last_checkpoint_verified,false);
+ assert.throws(()=>readSharedProjectState({...config,allowedRoots:[tmp]},ws),/exact approved/);
+ fs.mkdirSync(path.join(root,'.ai-bridge'));
+ const taskId='task_'+randomUUID(),now=new Date().toISOString();
+ fs.writeFileSync(path.join(root,'.ai-bridge','current-task.json'),JSON.stringify({
+ schema_version:1,task_id:taskId,goal:'Fix tests',status:'in_progress',plan_steps:['Run test'],target_paths:['src/a.ts'],created_at:now,updated_at:now}));
+ s=readSharedProjectState(config,ws);
+ assert.equal(s.task.task_id,taskId);assert.equal(s.continuity.next_steps[0],'Run test');
+ assert.equal(s.continuity.completed_work_verified,false);
+ fs.writeFileSync(path.join(root,'.ai-bridge','operation-journal.jsonl'),JSON.stringify({ts:now,operation_id:'op_test',event:'edit',status:'ok',command:'SENSITIVE'})+'\n');
+ s=readSharedProjectState(config,ws);
+ assert.equal(s.operation_journal.count,1);assert.ok(!JSON.stringify(s).includes('SENSITIVE'));
+ fs.writeFileSync(path.join(tmp,'target.json'),'{}');
+ fs.rmSync(path.join(root,'.ai-bridge','current-task.json'));
+ fs.symlinkSync(path.join(tmp,'target.json'),path.join(root,'.ai-bridge','current-task.json'));
+ assert.throws(()=>readSharedProjectState(config,ws),/Unsafe project-state file/);
+ fs.rmSync(path.join(root,'.ai-bridge','current-task.json'));
+ fs.writeFileSync(path.join(root,'.gitignore'),'.ai-bridge/\n');
+ fs.writeFileSync(path.join(root,'README.md'),'hello\n');
+ assert.equal(git('init','-q').status,0);
+ assert.equal(git('add','README.md','.gitignore').status,0);
+ assert.equal(git('-c','user.email=t@example.invalid','-c','user.name=Test','commit','-qm','initial').status,0);
+ s=readSharedProjectState(config,ws);
+ assert.equal(s.git.available,true);
+ assert.equal(s.git.dirty,false);
+ fs.writeFileSync(path.join(root,'README.md'),'changed\n');
+ s=readSharedProjectState(config,ws);
+ assert.equal(s.git.dirty,true);
+ console.log('PASS shared read-only continuity: task, journal, symlink denial, Git changes, no completion claims.');
+}finally{fs.rmSync(tmp,{recursive:true,force:true});}

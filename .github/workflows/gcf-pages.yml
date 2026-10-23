@@ -1,0 +1,51 @@
+# GPT Codex Flow public website. Manual-only: never deploy on git push.
+# This file is inert in the existing upstream repository. It can be used only
+# after the owner has created and reviewed the independent public product repo.
+name: GPT Codex Flow — Pages (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gcf-pages
+  cancel-in-progress: false
+
+jobs:
+  package-site:
+    if: github.repository == 'haiderhamad/gpt-codex-flow'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Verify website files
+        shell: bash
+        run: |
+          test -f docs/gcf-preview/index.html
+          test -f docs/gcf-preview/theme-light.css
+          test -f docs/gcf-preview/brand-mark.svg
+          test -f docs/gcf-preview/architecture-light.svg
+          test -f docs/gcf-preview/use-case-flow.svg
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload the static product website only
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/gcf-preview
+
+  deploy:
+    needs: package-site
+    if: github.repository == 'haiderhamad/gpt-codex-flow'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

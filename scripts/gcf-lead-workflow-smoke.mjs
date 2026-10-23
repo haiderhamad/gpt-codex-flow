@@ -1,0 +1,56 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {renderControlCenterPage} from '../dist/gcfControlCenterPage.js';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {saveOwnerProjectLead,ownerLeadSnapshot,previewProjectTaskRouting} from '../dist/gcfLeadPreferences.js';
+import {startControlCenter} from '../dist/gcfControlCenter.js';
+const htmlForSyntax=renderControlCenterPage('');
+const scripts=[...htmlForSyntax.matchAll(/<script>([\s\S]*?)<\/script>/g)];
+assert.ok(scripts.length,'Control Center includes its client script');
+for(const match of scripts)new vm.Script(match[1],{filename:'gcfControlCenterPage.inline.js'});
+assert.match(htmlForSyntax,/id="workflow"/);
+assert.match(htmlForSyntax,/class="workflow-grid"/);
+assert.doesNotMatch(htmlForSyntax,/id="codex-availability"/);
+assert.match(htmlForSyntax,/function updateLeadState\(/);
+assert.doesNotMatch(htmlForSyntax,/id="lead-project"[^>]+style=/);
+assert.doesNotMatch(htmlForSyntax,/id="workflow-goal"|id="workflow-preview"|Task to plan/);
+const temp=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'gcf-lead-smoke-')));
+const a=path.join(temp,'a'),b=path.join(temp,'b');fs.mkdirSync(a);fs.mkdirSync(b);
+const manifest=path.join(temp,'private','projects.json');fs.mkdirSync(path.dirname(manifest));
+fs.writeFileSync(manifest,JSON.stringify({version:1,roots:[a,b]}));
+try{
+  assert.deepEqual(ownerLeadSnapshot(manifest).map(x=>x.mode),['auto','auto']);
+  assert.equal(saveOwnerProjectLead(manifest,a,'codex_lead','auto').saved,true);
+  assert.equal(ownerLeadSnapshot(manifest)[0].mode,'codex_lead');
+  assert.equal(ownerLeadSnapshot(manifest)[1].mode,'auto');
+  assert.throws(()=>saveOwnerProjectLead(manifest,a,'auto','auto'),/changed/);
+  assert.throws(()=>saveOwnerProjectLead(manifest,temp,'chatgpt_lead','auto'),/not approved/);
+  assert.throws(()=>saveOwnerProjectLead(manifest,a,'bad','codex_lead'),/Choose/);
+  const stored=path.join(path.dirname(manifest),'gcf-lead-preferences.json');
+  assert.equal(fs.statSync(stored).mode&0o077,0);
+  assert.equal(previewProjectTaskRouting(manifest,a,'Implement backend tests').proposed_lead,'codex_lead');
+  assert.equal(previewProjectTaskRouting(manifest,a,'Research architecture and implement tests').steps.at(-1).stage,'Review and verify');
+  assert.equal(previewProjectTaskRouting(manifest,a,'Implement backend tests','rate_limited').steps.find(s=>s.stage==='Implement and test').assignee,'chatgpt');
+  assert.equal(previewProjectTaskRouting(manifest,b,'Research architecture').executionStarted,false);
+  const app=await startControlCenter({manifest,sourceRoot:process.cwd()});
+  try{
+    const post=(url,body,headers={})=>fetch(app.origin+url,{method:'POST',headers:{origin:app.origin,'content-type':'application/json',...headers},body:JSON.stringify(body)});
+    assert.equal((await post('/owner/workflow',{action:'save',project:a,mode:'auto',expected:'codex_lead'})).status,401);
+    const opened=await post('/owner/session',{code:app.bootstrapCode});const cookie=opened.headers.get('set-cookie').split(';')[0];
+    const html=await (await fetch(app.origin+'/',{headers:{cookie}})).text();
+    const csrf=html.match(/const csrf="([a-f0-9]{64})"/)?.[1];assert.ok(csrf);
+    assert.equal((await post('/owner/workflow',{action:'save',project:a,mode:'auto',expected:'codex_lead'},{cookie})).status,403);
+    const headers={cookie,'x-gcf-csrf':csrf};
+    let response=await post('/owner/workflow',{action:'save',project:a,mode:'auto',expected:'codex_lead'},headers);
+    assert.equal(response.status,200);assert.equal((await response.json()).executionStarted,false);
+    response=await post('/owner/workflow',{action:'preview',project:a,goal:'Research architecture and implement backend tests',availability:'available'},headers);
+    assert.equal(response.status,200);const preview=await response.json();
+    assert.equal(preview.mode,'auto');assert.equal(preview.previewOnly,true);
+    assert.deepEqual(preview.steps.map(s=>s.assignee),['chatgpt','codex','chatgpt']);
+    assert.equal((await post('/owner/workflow',{action:'preview',project:temp,goal:'Fix bug'},headers)).status,400);
+    assert.equal((await post('/owner/workflow',{action:'preview',project:a,goal:'Fix bug',availability:'fake'},headers)).status,400);
+  }finally{await new Promise(resolve=>app.server.close(resolve));}
+  console.log('PASS persistent separate leads, Auto stage assignment, rate-limit fallback, owner session/CSRF and invalid root denial.');
+}finally{fs.rmSync(temp,{recursive:true,force:true});}

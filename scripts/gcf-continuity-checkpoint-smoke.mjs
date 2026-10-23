@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {appendJournalEvent} from '../dist/journal.js';
+import {readSharedProjectState} from '../dist/gcfSharedProjectState.js';
+const base=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'gcf-checkpoint-')));
+const project=path.join(base,'test-project');fs.mkdirSync(project);fs.mkdirSync(path.join(project,'.ai-bridge'));
+const workspace={root:project,id:'ws_test'};
+const guard={resolve:(_w,relative)=>({absPath:path.join(project,relative),relPath:relative})};
+const config={contextDir:'.ai-bridge',writeMode:'workspace',allowedRoots:[project],blockedGlobs:[],maxOutputBytes:10000};
+try{
+ const event=await appendJournalEvent(config,guard,workspace,{event:'edit',status:'ok',paths:['src/example.ts'],command:'NEVER_STORE_THIS_SECRET'});
+ let state=readSharedProjectState(config,workspace);
+ assert.equal(state.observed_checkpoint.observed_operation,'edit');
+ assert.equal(state.observed_checkpoint.verified_completion,false);
+ assert.equal(state.continuity.completed_work_verified,false);
+ assert.equal(JSON.stringify(state).includes('NEVER_STORE_THIS_SECRET'),false);
+ assert.equal(fs.readFileSync(path.join(project,'.ai-bridge','continuity-checkpoint.json'),'utf8').includes('NEVER_STORE_THIS_SECRET'),false);
+ const before=fs.readFileSync(path.join(project,'.ai-bridge','continuity-checkpoint.json'),'utf8');
+ await appendJournalEvent({...config,writeMode:'off'},guard,workspace,{event:'task_verify',status:'ok'});
+ assert.equal(fs.readFileSync(path.join(project,'.ai-bridge','continuity-checkpoint.json'),'utf8'),before);
+ await appendJournalEvent(config,guard,workspace,{event:'task_verify',status:'error',command:'failed test'});
+ assert.equal(fs.readFileSync(path.join(project,'.ai-bridge','continuity-checkpoint.json'),'utf8'),before);
+ const file=path.join(project,'.ai-bridge','continuity-checkpoint.json');
+ fs.unlinkSync(file);fs.symlinkSync('/tmp/not-an-owner-checkpoint',file);
+ await appendJournalEvent(config,guard,workspace,{event:'edit',status:'ok'});
+ assert.equal(fs.lstatSync(file).isSymbolicLink(),true);
+ assert.throws(()=>readSharedProjectState(config,workspace),/Unsafe project-state file/);
+ console.log('PASS observed checkpoint: automatic journal hook, private bounded summary, read-only mode, error and symlink denial.');
+}finally{fs.rmSync(base,{recursive:true,force:true});}

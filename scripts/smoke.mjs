@@ -1,0 +1,914 @@
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import packageJson from '../package.json' with { type: 'json' };
+
+function encode(message) {
+  return `${JSON.stringify(message)}\n`;
+}
+
+class McpStdioClient {
+  constructor(command, args, options) {
+    this.child = spawn(command, args, options);
+    this.buffer = '';
+    this.nextId = 1;
+    this.pending = new Map();
+    this.child.stdout.on('data', (chunk) => this.onData(String(chunk)));
+    this.child.stderr.on('data', (chunk) => process.stderr.write(chunk));
+    this.child.on('exit', (code) => {
+      for (const { reject } of this.pending.values()) reject(new Error(`server exited ${code}`));
+    });
+  }
+
+  onData(chunk) {
+    this.buffer += chunk;
+    while (true) {
+      const index = this.buffer.indexOf('\n');
+      if (index < 0) return;
+      const line = this.buffer.slice(0, index).replace(/\r$/, '');
+      this.buffer = this.buffer.slice(index + 1);
+      if (!line.trim()) continue;
+      const msg = JSON.parse(line);
+      if (msg.id && this.pending.has(msg.id)) {
+        const { resolve, reject, timer } = this.pending.get(msg.id);
+        clearTimeout(timer);
+        this.pending.delete(msg.id);
+        if (msg.error) reject(new Error(msg.error.message));
+        else resolve(msg.result);
+      }
+    }
+  }
+
+  request(method, params) {
+    const id = this.nextId++;
+    const msg = { jsonrpc: '2.0', id, method, params };
+    this.child.stdin.write(encode(msg));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`timeout waiting for ${method}`)), 15000);
+      timer.unref();
+      this.pending.set(id, { resolve, reject, timer });
+    });
+  }
+
+  notify(method, params = {}) {
+    this.child.stdin.write(encode({ jsonrpc: '2.0', method, params }));
+  }
+
+  close() {
+    this.child.kill('SIGTERM');
+  }
+}
+
+const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-smoke-'));
+await fs.writeFile(path.join(tmp, 'demo.txt'), 'alpha\nread\nread\nomega\n', 'utf8');
+await fs.writeFile(path.join(tmp, 'config.txt'), 'OPENAI_API_KEY=sk-realSecretValue123\n', 'utf8');
+await fs.writeFile(path.join(tmp, 'AGENTS.md'), '# Smoke Agents\n\n- Preserve demo.txt.\n', 'utf8');
+const codexHistoryDir = path.join(tmp, 'codex-history');
+const codexSessionDir = path.join(codexHistoryDir, 'sessions', '2026', '06', '20');
+await fs.mkdir(codexSessionDir, { recursive: true });
+const codexSessionPath = path.join(codexSessionDir, 'rollout-2026-06-20T01-02-03-019cc369-bd7c-7891-b371-7b20b4fe0b18.jsonl');
+await fs.writeFile(codexSessionPath, [
+  JSON.stringify({ timestamp: '2026-06-20T01:02:03Z', type: 'session_meta', payload: { id: '019cc369-bd7c-7891-b371-7b20b4fe0b18', cwd: tmp } }),
+  JSON.stringify({ timestamp: '2026-06-20T01:02:04Z', type: 'response_item', payload: { type: 'message', role: 'user', content: 'Fix the smoke session browser' } }),
+  JSON.stringify({ timestamp: '2026-06-20T01:02:05Z', type: 'response_item', payload: { type: 'message', role: 'assistant', content: 'Session browser plan.' } }),
+  JSON.stringify({ timestamp: '2026-06-20T01:02:06Z', type: 'response_item', payload: { type: 'function_call', name: 'bash' } }),
+  JSON.stringify({ timestamp: '2026-06-20T01:02:07Z', type: 'response_item', payload: { type: 'function_call_output', output: 'ok' } })
+].join('\n') + '\n', 'utf8');
+const olderCodexSessionId = '019cc368-1111-7222-8333-123456789abc';
+await fs.writeFile(path.join(codexSessionDir, `rollout-2026-06-19T01-02-03-${olderCodexSessionId}.jsonl`), [
+  JSON.stringify({ timestamp: '2026-06-19T01:02:03Z', type: 'session_meta', payload: { id: olderCodexSessionId, cwd: tmp } }),
+  JSON.stringify({ timestamp: '2026-06-19T01:02:04Z', type: 'response_item', payload: { type: 'message', role: 'user', content: 'Older session still readable by id' } })
+].join('\n') + '\n', 'utf8');
+const largeCodexSessionId = '019cc367-aaaa-7333-8444-123456789def';
+await fs.writeFile(path.join(codexSessionDir, `rollout-2026-06-18T01-02-03-${largeCodexSessionId}.jsonl`), [
+  JSON.stringify({ timestamp: '2026-06-18T01:02:03Z', type: 'session_meta', payload: { id: largeCodexSessionId, cwd: tmp } }),
+  JSON.stringify({ timestamp: '2026-06-18T01:02:04Z', type: 'response_item', payload: { type: 'message', role: 'user', content: 'Large metadata session' } }),
+  JSON.stringify({ timestamp: '2026-06-18T01:02:05Z', type: 'response_item', payload: { type: 'function_call_output', output: 'x'.repeat(140000) } }),
+  JSON.stringify({ timestamp: '2026-06-18T01:02:06Z', type: 'response_item', payload: { type: 'message', role: 'assistant', content: 'Large tail summary' } })
+].join('\n') + '\n', 'utf8');
+await fs.mkdir(path.join(tmp, '.codex', 'skills', 'smoke-skill'), { recursive: true });
+await fs.writeFile(path.join(tmp, '.codex', 'skills', 'smoke-skill', 'SKILL.md'), [
+  '---',
+  'name: smoke-skill',
+  'description: Smoke test skill discovery.',
+  '---',
+  '',
+  '# Smoke Skill',
+  ''
+].join('\n'), 'utf8');
+await fs.mkdir(path.join(tmp, '.agents', 'skills', 'smoke-skill'), { recursive: true });
+await fs.writeFile(path.join(tmp, '.agents', 'skills', 'smoke-skill', 'SKILL.md'), [
+  '---',
+  'name: smoke-skill',
+  'description: Duplicate smoke test skill discovery.',
+  '---',
+  '',
+  '# Duplicate Smoke Skill',
+  ''
+].join('\n'), 'utf8');
+await fs.writeFile(path.join(tmp, 'package.json'), JSON.stringify({
+  scripts: {
+    'build:clients': "node -e \"console.log('clients ok')\""
+  }
+}, null, 2), 'utf8');
+const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-outside-'));
+await fs.writeFile(path.join(outside, 'secret.txt'), 'do-not-read', 'utf8');
+let symlinkEscapePath = 'secret-link.txt';
+try {
+  await fs.symlink(path.join(outside, 'secret.txt'), path.join(tmp, symlinkEscapePath));
+} catch (error) {
+  if (process.platform !== 'win32' || error?.code !== 'EPERM') throw error;
+  symlinkEscapePath = 'secret-link-dir/secret.txt';
+  await fs.symlink(outside, path.join(tmp, 'secret-link-dir'), 'junction');
+}
+for (const args of [['init'], ['add', 'demo.txt', 'AGENTS.md', 'package.json']]) {
+  const result = spawnSync('git', args, { cwd: tmp, encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr || result.stdout}`);
+  }
+}
+const commitResult = spawnSync('git', ['-c', 'user.email=smoke@example.com', '-c', 'user.name=Smoke Test', 'commit', '-m', 'initial smoke fixture'], { cwd: tmp, encoding: 'utf8' });
+if (commitResult.status !== 0) {
+  throw new Error(`git commit failed: ${commitResult.stderr || commitResult.stdout}`);
+}
+
+const client = new McpStdioClient('node', ['dist/stdio.js', '--root', tmp, '--allow-root', tmp, '--bash', 'safe', '--tool-mode', 'full'], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_ROOT: tmp,
+    CODEXBRIDGE_ALLOWED_ROOTS: tmp,
+    CODEXBRIDGE_WIDGET_DOMAIN: 'https://widgets.codexbridge.test',
+    CODEXBRIDGE_SSH_MODE: 'safe',
+    CODEXBRIDGE_SSH_PROFILES: JSON.stringify({
+      staging: {
+        host: 'staging.example.test',
+        user: 'deploy',
+        port: 2222,
+        identityFile: '~/.ssh/codexbridge_test_key',
+        workdir: '/srv/app',
+        mode: 'safe'
+      }
+    })
+  }
+});
+
+if (packageJson.name !== '@haiderhamad/gpt-codex-flow') {
+  throw new Error(`package name should be @naplesblue/codexbridge, got ${packageJson.name}`);
+}
+for (const expectedBin of ['codexbridge', 'codexbridge-mcp', 'codexbridge-mcp-http']) {
+  if (!packageJson.bin?.[expectedBin]) throw new Error(`package bin missing ${expectedBin}`);
+}
+const removedProjectName = 'codex' + 'pro';
+for (const removedBin of [removedProjectName, `${removedProjectName}-mcp`, `${removedProjectName}-mcp-http`]) {
+  if (packageJson.bin?.[removedBin]) throw new Error(`package bin should be removed: ${removedBin}`);
+}
+
+await client.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-smoke', version: '0.1.0' }
+});
+client.notify('notifications/initialized');
+const tools = await client.request('tools/list', {});
+const toolNames = tools.tools.map((tool) => tool.name);
+for (const expected of ['server_config', 'codexbridge_self_test', 'codexbridge_inventory', 'list_workspaces', 'open_current_workspace', 'open_workspace', 'workspace_snapshot', 'tree', 'search', 'load_skill', 'read', 'write', 'edit', 'preview_change_set', 'apply_change_set', 'preview_rollback_change_set', 'approval_review', 'task_brief', 'task_plan', 'task_verify', 'task_report', 'task_resume', 'bash', 'ssh_profiles', 'ssh_exec', 'git_status', 'git_diff', 'show_changes', 'operation_journal', 'read_handoff', 'codex_context', 'handoff_to_agent', 'handoff_to_codex', 'export_pro_context']) {
+  if (!toolNames.includes(expected)) throw new Error(`missing tool: ${expected}`);
+}
+const toolCardUri = 'ui://widget/codexbridge-tool-card-v1.html';
+const toolsByName = new Map(tools.tools.map((tool) => [tool.name, tool]));
+if (toolsByName.get('task_plan')?.annotations?.readOnlyHint !== false) {
+  throw new Error(`task_plan must not be declared read-only: ${JSON.stringify(toolsByName.get('task_plan')?.annotations)}`);
+}
+if (toolsByName.get('task_report')?.annotations?.readOnlyHint !== false) {
+  throw new Error(`task_report must not be declared read-only: ${JSON.stringify(toolsByName.get('task_report')?.annotations)}`);
+}
+function hasWidgetMeta(name) {
+  const meta = toolsByName.get(name)?._meta ?? {};
+  return meta.ui?.resourceUri === toolCardUri || meta['openai/outputTemplate'] === toolCardUri;
+}
+async function expectToolError(name, args, pattern, targetClient = client) {
+  const result = await targetClient.request('tools/call', { name, arguments: args });
+  if (!result.isError) {
+    throw new Error(`${name} unexpectedly succeeded`);
+  }
+  const text = result.content?.find?.((part) => part.type === 'text')?.text ?? JSON.stringify(result.structuredContent);
+  if (pattern && !pattern.test(text)) {
+    throw new Error(`${name} error did not match ${pattern}: ${text}`);
+  }
+}
+for (const visualTool of toolNames) {
+  if (!hasWidgetMeta(visualTool)) throw new Error(`${visualTool} should render the CodexBridge widget`);
+}
+const resources = await client.request('resources/list', {});
+const toolCard = resources.resources.find((resource) => resource.uri === toolCardUri);
+if (!toolCard) throw new Error(`missing tool-card resource: ${toolCardUri}`);
+if (toolCard.mimeType !== 'text/html;profile=mcp-app') throw new Error(`unexpected tool-card mime type: ${toolCard.mimeType}`);
+const widget = await client.request('resources/read', { uri: toolCardUri });
+const widgetText = widget.contents?.[0]?.text ?? '';
+const widgetMeta = widget.contents?.[0]?._meta ?? {};
+if (!widgetText.includes('Waiting for tool result') || !widgetText.includes('renderWorkspace') || !widgetText.includes('renderSelfTest') || !widgetText.includes('details class="fold"') || !widgetText.includes('ui/notifications/tool-result')) {
+  throw new Error('tool-card widget resource did not include expected Apps bridge code');
+}
+if (!widgetMeta.ui?.csp || !widgetMeta['openai/widgetCSP']) {
+  throw new Error('tool-card widget resource did not expose standard and ChatGPT CSP metadata');
+}
+if (widgetMeta.ui?.domain !== 'https://widgets.codexbridge.test' || widgetMeta['openai/widgetDomain'] !== 'https://widgets.codexbridge.test') {
+  throw new Error('tool-card widget resource did not expose standard and ChatGPT widget domain metadata');
+}
+const current = await client.request('tools/call', { name: 'open_current_workspace', arguments: { include_tree: false } });
+const realTmp = await fs.realpath(tmp);
+if (current.structuredContent.root !== realTmp) throw new Error(`open_current_workspace opened ${current.structuredContent.root}, expected ${realTmp}`);
+if (current.structuredContent.codexbridge_tool !== 'open_current_workspace') throw new Error('tool result was not tagged for widget rendering');
+if (current.structuredContent.tool_mode !== 'full') throw new Error(`open_current_workspace did not expose tool_mode: ${current.structuredContent.tool_mode}`);
+if (!current.structuredContent.skill_inventory?.some?.((skill) => skill.name === 'smoke-skill')) {
+  throw new Error('open_current_workspace did not discover workspace skill inventory');
+}
+const serverConfig = await client.request('tools/call', { name: 'server_config', arguments: {} });
+if (serverConfig.structuredContent.sshMode !== 'safe' || serverConfig.structuredContent.sshProfiles !== 1) {
+  throw new Error(`server_config did not expose SSH mode/profile count: ${JSON.stringify(serverConfig.structuredContent)}`);
+}
+const sshProfiles = await client.request('tools/call', { name: 'ssh_profiles', arguments: {} });
+const stagingProfile = sshProfiles.structuredContent.profiles?.find?.((profile) => profile.name === 'staging');
+if (!stagingProfile || stagingProfile.host !== 'staging.example.test' || stagingProfile.identity_file !== '<configured>') {
+  throw new Error(`ssh_profiles did not return redacted staging profile: ${JSON.stringify(sshProfiles.structuredContent)}`);
+}
+const sshDryRun = await client.request('tools/call', {
+  name: 'ssh_exec',
+  arguments: {
+    profile: 'staging',
+    command: 'git status --short',
+    dry_run: true
+  }
+});
+if (!sshDryRun.structuredContent.dry_run || !sshDryRun.structuredContent.argv?.some?.((part) => part.includes('staging.example.test')) || !sshDryRun.structuredContent.remote_command?.includes?.('cd /srv/app')) {
+  throw new Error(`ssh_exec dry-run did not preview SSH argv and remote command: ${JSON.stringify(sshDryRun.structuredContent)}`);
+}
+if (JSON.stringify(sshDryRun.structuredContent).includes('codexbridge_test_key') || !sshDryRun.structuredContent.argv?.includes?.('<identity-file>')) {
+  throw new Error(`ssh_exec dry-run leaked identity file path: ${JSON.stringify(sshDryRun.structuredContent)}`);
+}
+await expectToolError('ssh_exec', { profile: 'staging', command: 'sudo reboot', dry_run: true }, /blocked|safe|policy/i);
+await expectToolError('approval_review', { workspace_id: current.structuredContent.workspace_id, actions: [{ type: 'ssh_command', profile: 'missing', command: 'hostname' }] }, /Unknown SSH profile/i);
+const selfTest = await client.request('tools/call', {
+  name: 'codexbridge_self_test',
+  arguments: {
+    workspace_id: current.structuredContent.workspace_id,
+    max_skills: 12
+  }
+});
+if (selfTest.structuredContent.status === 'fail' || !selfTest.structuredContent.expected_tools?.includes?.('codexbridge_self_test')) {
+  throw new Error(`codexbridge_self_test failed: ${JSON.stringify(selfTest.structuredContent)}`);
+}
+if (!selfTest.structuredContent.files_touched?.includes?.('.ai-bridge/codexbridge-self-test.md')) {
+  throw new Error('codexbridge_self_test did not run the .ai-bridge write/edit probe');
+}
+const snapshotAlias = await client.request('tools/call', {
+  name: 'workspace_snapshot',
+  arguments: {
+    workspace_id: current.structuredContent.workspace_id,
+    max_depth: 1,
+    max_files: 20,
+    include_skills: false
+  }
+});
+if (!snapshotAlias.structuredContent.tree) {
+  throw new Error('workspace_snapshot did not accept max_files alias or return a tree');
+}
+await expectToolError('load_skill', { name: 'smoke-skill', source: 'workspace' }, /Multiple skills named smoke-skill/);
+const loadedSkill = await client.request('tools/call', {
+  name: 'load_skill',
+  arguments: {
+    name: 'smoke-skill',
+    source: 'workspace',
+    path: '$WORKSPACE/.codex/skills/smoke-skill/SKILL.md'
+  }
+});
+if (loadedSkill.structuredContent.skill?.name !== 'smoke-skill' || !loadedSkill.structuredContent.text?.includes('# Smoke Skill')) {
+  throw new Error('load_skill did not return bounded SKILL.md content for smoke-skill');
+}
+await expectToolError('load_skill', { name: 'missing-skill' }, /Skill not found/);
+const inventory = await client.request('tools/call', { name: 'codexbridge_inventory', arguments: { include_global_skills: false, include_mcp_servers: false } });
+if (inventory.structuredContent.codexbridge_tool !== 'codexbridge_inventory') throw new Error('inventory result was not tagged for widget rendering');
+const opened = await client.request('tools/call', { name: 'open_workspace', arguments: { root: tmp, include_tree: true } });
+const ws = opened.structuredContent.workspace_id;
+const openedByPath = await client.request('tools/call', { name: 'open_workspace', arguments: { path: tmp, include_tree: false } });
+if (openedByPath.structuredContent.workspace_id !== ws) {
+  throw new Error(`open_workspace path alias returned ${openedByPath.structuredContent.workspace_id}, expected ${ws}`);
+}
+await client.request('tools/call', { name: 'read', arguments: { workspace_id: ws, path: 'demo.txt' } });
+const secretRead = await client.request('tools/call', { name: 'read', arguments: { workspace_id: ws, path: 'config.txt' } });
+const secretPayload = JSON.stringify(secretRead);
+if (secretPayload.includes('sk-realSecretValue123') || !secretPayload.includes('[REDACTED_SECRET]')) {
+  throw new Error('read did not redact secret-looking content');
+}
+await expectToolError('write', { workspace_id: ws, path: 'notes.md', content: 'OPENAI_API_KEY=sk-realSecretValue123\n' }, /Secret-looking content is blocked/);
+await client.request('tools/call', {
+  name: 'write',
+  arguments: {
+    workspace_id: ws,
+    path: 'env-ref.js',
+    content: 'const TOKEN = process.env.TOKEN;\nconst OPENAI_API_KEY = process.env.OPENAI_API_KEY;\nconst apiToken = getToken();\n'
+  }
+});
+const envRefRead = await client.request('tools/call', { name: 'read', arguments: { workspace_id: ws, path: 'env-ref.js' } });
+const envRefPayload = JSON.stringify(envRefRead);
+if (envRefPayload.includes('[REDACTED_SECRET]')) {
+  throw new Error('env-var token references were incorrectly redacted as literal secrets');
+}
+const symlinkRead = await client.request('tools/call', { name: 'read', arguments: { workspace_id: ws, path: symlinkEscapePath } });
+if (!symlinkRead.isError) throw new Error('symlink escape read was not blocked');
+await client.request('tools/call', { name: 'edit', arguments: { workspace_id: ws, path: 'demo.txt', old_text: 'read\nread', new_text: 'read\nwrite' } });
+const changes = await client.request('tools/call', { name: 'show_changes', arguments: { workspace_id: ws } });
+if (!changes.structuredContent.changed || !changes.structuredContent.diff.includes('demo.txt')) {
+  throw new Error('show_changes did not report the edited demo.txt diff');
+}
+const statsOnlyDiff = await client.request('tools/call', { name: 'git_diff', arguments: { workspace_id: ws, include_diff: false } });
+if (statsOnlyDiff.structuredContent.include_diff !== false || statsOnlyDiff.structuredContent.diff !== '') {
+  throw new Error(`git_diff include_diff=false returned raw diff: ${JSON.stringify(statsOnlyDiff.structuredContent)}`);
+}
+if (!statsOnlyDiff.content?.[0]?.text?.includes('Raw diff omitted by include_diff=false')) {
+  throw new Error('git_diff include_diff=false did not report omitted diff in text output');
+}
+const demoChanges = await client.request('tools/call', { name: 'show_changes', arguments: { workspace_id: ws, path: 'demo.txt' } });
+if (!demoChanges.structuredContent.changed || !demoChanges.structuredContent.changed_files?.some?.((line) => line.includes('demo.txt'))) {
+  throw new Error(`path-scoped show_changes did not report demo.txt: ${JSON.stringify(demoChanges.structuredContent.changed_files)}`);
+}
+if (demoChanges.structuredContent.changed_files?.some?.((line) => line.includes('env-ref.js'))) {
+  throw new Error(`path-scoped show_changes leaked unrelated env-ref.js status: ${JSON.stringify(demoChanges.structuredContent.changed_files)}`);
+}
+const cleanPathChanges = await client.request('tools/call', { name: 'show_changes', arguments: { workspace_id: ws, path: 'package.json' } });
+if (cleanPathChanges.structuredContent.changed || cleanPathChanges.structuredContent.changed_files?.length || cleanPathChanges.structuredContent.diff.includes('demo.txt')) {
+  throw new Error(`path-scoped show_changes leaked unrelated changes: ${JSON.stringify(cleanPathChanges.structuredContent)}`);
+}
+const codexContext = await client.request('tools/call', { name: 'codex_context', arguments: { workspace_id: ws, target_path: 'demo.txt' } });
+if (!codexContext.structuredContent.agents_files.includes('AGENTS.md')) throw new Error('codex_context did not include AGENTS.md');
+if (codexContext.structuredContent.agents_files.length !== 1) throw new Error(`codex_context returned duplicate AGENTS files: ${codexContext.structuredContent.agents_files.join(', ')}`);
+if (!codexContext.content?.[0]?.text?.includes('Smoke Agents')) throw new Error('codex_context did not include AGENTS.md content');
+const taskBrief = await client.request('tools/call', {
+  name: 'task_brief',
+  arguments: { workspace_id: ws, goal: 'Update demo text safely', target_path: 'demo.txt', include_diff: true, include_tree: true }
+});
+if (taskBrief.structuredContent.goal !== 'Update demo text safely' || !taskBrief.structuredContent.agents_files?.includes?.('AGENTS.md')) {
+  throw new Error(`task_brief did not return goal and AGENTS context: ${JSON.stringify(taskBrief.structuredContent)}`);
+}
+if (!taskBrief.structuredContent.recommended_workflow?.includes?.('preview_change_set')) {
+  throw new Error(`task_brief did not recommend change-set workflow: ${JSON.stringify(taskBrief.structuredContent.recommended_workflow)}`);
+}
+const taskPlan = await client.request('tools/call', {
+  name: 'task_plan',
+  arguments: {
+    workspace_id: ws,
+    goal: 'Update demo text safely',
+    target_paths: ['demo.txt'],
+    proposed_commands: ['npm run build:clients'],
+    proposed_changes: [{ path: 'demo.txt', old_text: 'omega', new_text: 'OMEGA', expected_replacements: 1 }]
+  }
+});
+if (!taskPlan.structuredContent.steps?.some?.((step) => step.tool === 'preview_change_set')) {
+  throw new Error(`task_plan did not include preview_change_set step: ${JSON.stringify(taskPlan.structuredContent.steps)}`);
+}
+if (!taskPlan.structuredContent.approval_requirements?.some?.((item) => item.scope === 'local_write' && item.required === true)) {
+  throw new Error(`task_plan did not expose local write approval: ${JSON.stringify(taskPlan.structuredContent.approval_requirements)}`);
+}
+const approvalReview = await client.request('tools/call', {
+  name: 'approval_review',
+  arguments: {
+    workspace_id: ws,
+    actions: [
+      { type: 'command', command: 'npm run build:clients' },
+      { type: 'command', command: 'npm install left-pad' },
+      { type: 'ssh_command', profile: 'staging', command: 'sudo reboot' },
+      { type: 'change_set', changes: [{ path: 'demo.txt', old_text: 'omega', new_text: 'OMEGA', expected_replacements: 1 }] }
+    ]
+  }
+});
+if (approvalReview.structuredContent.decision !== 'deny' || !approvalReview.structuredContent.actions?.some?.((action) => action.scope === 'command' && action.decision === 'deny')) {
+  throw new Error(`approval_review did not deny blocked command: ${JSON.stringify(approvalReview.structuredContent)}`);
+}
+if (!approvalReview.structuredContent.actions?.some?.((action) => action.scope === 'local_write' && action.required === true)) {
+  throw new Error(`approval_review did not mark change set as approval-required: ${JSON.stringify(approvalReview.structuredContent)}`);
+}
+if (!approvalReview.structuredContent.actions?.some?.((action) => action.scope === 'remote_command' && action.decision === 'deny')) {
+  throw new Error(`approval_review did not include SSH command policy: ${JSON.stringify(approvalReview.structuredContent)}`);
+}
+const pwdBash = await client.request('tools/call', { name: 'bash', arguments: { workspace_id: ws, command: 'pwd' } });
+const pwdBashText = pwdBash.content?.[0]?.text ?? '';
+if (!pwdBashText.includes('Exit: 0') || pwdBashText.includes('## stdout') || pwdBashText.includes('## stderr')) {
+  throw new Error(`default bash transcript should be compact: ${pwdBashText}`);
+}
+if (!pwdBash.structuredContent.stdout?.includes(tmp)) {
+  throw new Error(`compact bash transcript dropped structured stdout: ${JSON.stringify(pwdBash.structuredContent)}`);
+}
+await expectToolError('bash', { workspace_id: ws, command: 'find /tmp' }, /blocked/i);
+await expectToolError('bash', { workspace_id: ws, command: 'find . -fprint leaked.txt' }, /blocked/i);
+await expectToolError('bash', { workspace_id: ws, command: 'git show HEAD:.env' }, /blocked/i);
+await expectToolError('bash', { workspace_id: ws, command: 'ls $HOME' }, /blocked/i);
+await expectToolError('bash', { workspace_id: ws, command: 'npm install left-pad' }, /Command is not in the safe bash allowlist|policy/i);
+const clientBuild = await client.request('tools/call', { name: 'bash', arguments: { workspace_id: ws, command: 'npm run build:clients', timeout_ms: 60000 } });
+if (!clientBuild.structuredContent.stdout?.includes('clients ok')) {
+  throw new Error('safe bash did not run npm run build:clients');
+}
+const taskVerify = await client.request('tools/call', { name: 'task_verify', arguments: { workspace_id: ws, command: 'npm run build:clients', timeout_ms: 60000 } });
+if (taskVerify.structuredContent.policy?.decision !== 'allow' || taskVerify.structuredContent.result?.exitCode !== 0) {
+  throw new Error(`task_verify did not run allowed verification: ${JSON.stringify(taskVerify.structuredContent)}`);
+}
+const previewChangeSet = await client.request('tools/call', {
+  name: 'preview_change_set',
+  arguments: {
+    workspace_id: ws,
+    changes: [
+      { path: 'demo.txt', old_text: 'alpha', new_text: 'ALPHA', expected_replacements: 1 },
+      { path: 'new-notes.md', content: '# Notes\n', create_dirs: true }
+    ]
+  }
+});
+if (previewChangeSet.structuredContent.changed !== true || previewChangeSet.structuredContent.change_count !== 2) {
+  throw new Error(`preview_change_set did not report two changes: ${JSON.stringify(previewChangeSet.structuredContent)}`);
+}
+const applyChangeSet = await client.request('tools/call', {
+  name: 'apply_change_set',
+  arguments: {
+    workspace_id: ws,
+    changes: previewChangeSet.structuredContent.changes
+  }
+});
+if (applyChangeSet.structuredContent.applied !== true) {
+  throw new Error(`apply_change_set did not apply: ${JSON.stringify(applyChangeSet.structuredContent)}`);
+}
+const appliedDemo = await fs.readFile(path.join(tmp, 'demo.txt'), 'utf8');
+if (!appliedDemo.startsWith('ALPHA\n')) {
+  throw new Error(`apply_change_set did not update demo.txt: ${appliedDemo}`);
+}
+await fs.stat(path.join(tmp, 'new-notes.md'));
+const unifiedPreview = await client.request('tools/call', {
+  name: 'preview_change_set',
+  arguments: {
+    workspace_id: ws,
+    changes: [{
+      unified_diff: '--- a/demo.txt\n+++ b/demo.txt\n@@ -1,4 +1,4 @@\n ALPHA\n read\n write\n-omega\n+OMEGA\n'
+    }]
+  }
+});
+if (unifiedPreview.structuredContent.change_count !== 1 || unifiedPreview.structuredContent.changes?.[0]?.kind !== 'edit') {
+  throw new Error(`preview_change_set did not parse unified diff: ${JSON.stringify(unifiedPreview.structuredContent)}`);
+}
+const unifiedApply = await client.request('tools/call', {
+  name: 'apply_change_set',
+  arguments: { workspace_id: ws, changes: unifiedPreview.structuredContent.changes }
+});
+if (unifiedApply.structuredContent.applied !== true) {
+  throw new Error(`apply_change_set did not apply parsed unified diff: ${JSON.stringify(unifiedApply.structuredContent)}`);
+}
+const rollbackPreview = await client.request('tools/call', {
+  name: 'preview_rollback_change_set',
+  arguments: { workspace_id: ws, changes: unifiedApply.structuredContent.changes }
+});
+if (rollbackPreview.structuredContent.change_count !== 1 || !rollbackPreview.structuredContent.diff?.includes('-OMEGA')) {
+  throw new Error(`preview_rollback_change_set did not invert exact edit: ${JSON.stringify(rollbackPreview.structuredContent)}`);
+}
+await expectToolError('apply_change_set', {
+  workspace_id: ws,
+  changes: [
+    { path: 'demo.txt', old_text: 'missing old text', new_text: 'nope', expected_replacements: 1 }
+  ]
+}, /old_text was not found|change set/i);
+const journal = await client.request('tools/call', {
+  name: 'operation_journal',
+  arguments: { workspace_id: ws, max_events: 30 }
+});
+const eventNames = journal.structuredContent.events.map((event) => event.event);
+for (const expected of ['write', 'edit', 'bash', 'apply_change_set']) {
+  if (!eventNames.includes(expected)) throw new Error(`operation_journal missing ${expected}: ${eventNames.join(', ')}`);
+}
+const taskReport = await client.request('tools/call', { name: 'task_report', arguments: { workspace_id: ws, max_events: 20, include_diff: false } });
+if (!taskReport.structuredContent.changed || !taskReport.structuredContent.events?.some?.((event) => event.event === 'task_verify')) {
+  throw new Error(`task_report did not summarize task state and journal: ${JSON.stringify(taskReport.structuredContent)}`);
+}
+
+// --- Task resume layer (Phase 4) ---
+const planWithSteps = await client.request('tools/call', {
+  name: 'task_plan',
+  arguments: {
+    workspace_id: ws,
+    goal: 'Resume demo: update demo text',
+    target_paths: ['demo.txt'],
+    plan_steps: ['Read demo.txt', 'Edit omega to OMEGA', 'Verify with cat']
+  }
+});
+if (!planWithSteps.structuredContent.task_id || !String(planWithSteps.structuredContent.task_id).startsWith('task_')) {
+  throw new Error(`task_plan did not persist a task_id: ${JSON.stringify(planWithSteps.structuredContent)}`);
+}
+const persistedTaskId = planWithSteps.structuredContent.task_id;
+const currentTaskFile = path.join(tmp, '.ai-bridge', 'current-task.json');
+const persisted = JSON.parse(await fs.readFile(currentTaskFile, 'utf8'));
+if (persisted.goal !== 'Resume demo: update demo text' || persisted.plan_steps.length !== 3 || persisted.status !== 'in_progress') {
+  throw new Error(`current-task.json missing expected fields: ${JSON.stringify(persisted)}`);
+}
+
+const briefWithTask = await client.request('tools/call', { name: 'task_brief', arguments: { workspace_id: ws, goal: 'check active task' } });
+if (briefWithTask.structuredContent.active_task?.task_id !== persistedTaskId) {
+  throw new Error(`task_brief did not surface active_task: ${JSON.stringify(briefWithTask.structuredContent.active_task)}`);
+}
+
+const resume = await client.request('tools/call', { name: 'task_resume', arguments: { workspace_id: ws } });
+if (!resume.structuredContent.active || resume.structuredContent.task_id !== persistedTaskId) {
+  throw new Error(`task_resume did not return active task: ${JSON.stringify(resume.structuredContent)}`);
+}
+if (resume.structuredContent.plan_steps?.length !== 3 || !Array.isArray(resume.structuredContent.events)) {
+  throw new Error(`task_resume missing plan/events: ${JSON.stringify(resume.structuredContent)}`);
+}
+
+const completed = await client.request('tools/call', { name: 'task_report', arguments: { workspace_id: ws, include_diff: false, complete: true } });
+if (completed.structuredContent.archived_task?.status !== 'complete') {
+  throw new Error(`task_report complete did not archive task: ${JSON.stringify(completed.structuredContent.archived_task)}`);
+}
+if (existsSync(currentTaskFile)) {
+  throw new Error('current-task.json should be removed after task_report complete');
+}
+const archiveFile = path.join(tmp, '.ai-bridge', 'tasks', `${persistedTaskId}.json`);
+const archived = JSON.parse(await fs.readFile(archiveFile, 'utf8'));
+if (archived.status !== 'complete' || !archived.completed_at) {
+  throw new Error(`archived task file wrong: ${JSON.stringify(archived)}`);
+}
+
+const resumeAfter = await client.request('tools/call', { name: 'task_resume', arguments: { workspace_id: ws } });
+if (resumeAfter.structuredContent.active !== false) {
+  throw new Error(`task_resume should report no active task after complete: ${JSON.stringify(resumeAfter.structuredContent)}`);
+}
+
+await fs.writeFile(currentTaskFile, JSON.stringify({ task_id: 'task_corrupt' }), 'utf8');
+const corruptResume = await client.request('tools/call', { name: 'task_resume', arguments: { workspace_id: ws } });
+if (corruptResume.structuredContent.active !== false) {
+  throw new Error(`task_resume should ignore corrupt active task records: ${JSON.stringify(corruptResume.structuredContent)}`);
+}
+await fs.rm(currentTaskFile);
+
+// Starting a new task while one is in_progress archives the prior as abandoned
+await client.request('tools/call', { name: 'task_plan', arguments: { workspace_id: ws, goal: 'First task', plan_steps: ['step a'] } });
+const firstId = JSON.parse(await fs.readFile(currentTaskFile, 'utf8')).task_id;
+await client.request('tools/call', { name: 'task_plan', arguments: { workspace_id: ws, goal: 'Second task', plan_steps: ['step b'] } });
+const abandoned = JSON.parse(await fs.readFile(path.join(tmp, '.ai-bridge', 'tasks', `${firstId}.json`), 'utf8'));
+if (abandoned.status !== 'abandoned') {
+  throw new Error(`prior task should be archived as abandoned: ${JSON.stringify(abandoned)}`);
+}
+// Clean up so later mode checks start without an active task lingering
+await client.request('tools/call', { name: 'task_report', arguments: { workspace_id: ws, include_diff: false, complete: true } });
+
+const exported = await client.request('tools/call', { name: 'export_pro_context', arguments: { workspace_id: ws, selected_paths: ['demo.txt'], max_files: 4, max_total_bytes: 80000 } });
+if (exported.structuredContent.path !== '.ai-bridge/pro-context.md') throw new Error('export_pro_context wrote an unexpected path');
+await fs.stat(path.join(tmp, '.ai-bridge', 'pro-context.md'));
+const exactExport = await client.request('tools/call', {
+  name: 'export_pro_context',
+  arguments: {
+    workspace_id: ws,
+    selected_paths: ['demo.txt'],
+    include_important_files: false,
+    include_changed_files: false,
+    include_diff: false,
+    include_ai_bridge: false,
+    max_files: 4,
+    max_total_bytes: 80000
+  }
+});
+if (!exactExport.structuredContent.files_included?.includes('demo.txt')) {
+  throw new Error(`selected-only export did not include demo.txt: ${JSON.stringify(exactExport.structuredContent.files_included)}`);
+}
+if (exactExport.structuredContent.files_included?.some?.((file) => file !== 'demo.txt')) {
+  throw new Error(`selected-only export included unexpected files: ${JSON.stringify(exactExport.structuredContent.files_included)}`);
+}
+const exactProContext = await fs.readFile(path.join(tmp, '.ai-bridge', 'pro-context.md'), 'utf8');
+if (!exactProContext.includes('Auto-include important root files: no') || !exactProContext.includes('Auto-include changed files: no')) {
+  throw new Error('selected-only export did not record disabled auto-inclusion settings');
+}
+if (exactProContext.includes('### AGENTS.md') || exactProContext.includes('### package.json') || exactProContext.includes('### env-ref.js')) {
+  throw new Error('selected-only export leaked auto-included important or changed files');
+}
+const agentHandoff = await client.request('tools/call', {
+  name: 'handoff_to_agent',
+  arguments: {
+    workspace_id: ws,
+    agent: 'opencode',
+    model: 'provider/cheap-model',
+    title: 'Smoke agent plan',
+    plan: '- Verify demo.txt contains write.'
+  }
+});
+if (agentHandoff.structuredContent.agent !== 'opencode') throw new Error('handoff_to_agent did not preserve target agent');
+const escapedHandoff = await client.request('tools/call', {
+  name: 'handoff_to_agent',
+  arguments: {
+    workspace_id: ws,
+    agent: 'opencode',
+    model: 'foo; touch /tmp/pwned',
+    title: 'Escaped model plan',
+    plan: '- Verify shell hints quote model names.'
+  }
+});
+const escapedPrompt = escapedHandoff.content?.find?.((part) => part.type === 'text')?.text ?? '';
+if (!escapedPrompt.includes("--model 'foo; touch /tmp/pwned'")) {
+  throw new Error(`handoff_to_agent did not shell-quote the model hint: ${escapedPrompt}`);
+}
+if (escapedPrompt.includes('--model foo; touch')) {
+  throw new Error(`handoff_to_agent exposed an unquoted model hint: ${escapedPrompt}`);
+}
+for (const bridgeFile of ['agent-status.md', 'implementation-diff.patch', 'execution-log.jsonl']) {
+  await fs.stat(path.join(tmp, '.ai-bridge', bridgeFile));
+}
+const projectInit = spawnSync(process.execPath, ['scripts/codexbridge.mjs', 'init', '--root', tmp], {
+  cwd: path.resolve('.'),
+  env: process.env,
+  encoding: 'utf8'
+});
+if (projectInit.status !== 0) {
+  throw new Error(`project init failed in MCP smoke\nstdout:\n${projectInit.stdout}\nstderr:\n${projectInit.stderr}`);
+}
+const handoffContext = await client.request('tools/call', { name: 'read_handoff', arguments: { workspace_id: ws } });
+for (const expectedFile of ['.ai-bridge/PROJECT.md', '.ai-bridge/HISTORY.md', '.ai-bridge/HANDOFF.md', '.ai-bridge/agent-status.md', '.ai-bridge/implementation-diff.patch', '.ai-bridge/execution-log.jsonl']) {
+  if (!handoffContext.structuredContent.files.includes(expectedFile)) {
+    throw new Error(`read_handoff did not include ${expectedFile}`);
+  }
+}
+const handoffText = handoffContext.content?.find?.((part) => part.type === 'text')?.text ?? '';
+for (const expectedText of ['# Project Context', '# Verified Project History', '# Agent Handoff']) {
+  if (!handoffText.includes(expectedText)) throw new Error(`read_handoff did not expose ${expectedText}`);
+}
+await client.request('tools/call', { name: 'handoff_to_codex', arguments: { workspace_id: ws, title: 'Smoke Codex plan', plan: '- Verify demo.txt contains write.', append: true } });
+await fs.writeFile(path.join(tmp, '.ai-bridge', 'current-plan.md'), 'x'.repeat(190000), 'utf8');
+await expectToolError('handoff_to_agent', {
+  workspace_id: ws,
+  agent: 'opencode',
+  title: 'Oversized append plan',
+  plan: '- This append should fail before loading the existing plan.',
+  append: true
+}, /File is too large/);
+client.close();
+async function assertToolMode(mode, expected, hidden) {
+  const args = ['dist/stdio.js', '--root', tmp, '--allow-root', tmp, '--bash', 'safe'];
+  if (mode) args.push('--tool-mode', mode);
+const modeClient = new McpStdioClient('node', args, {
+    cwd: path.resolve('.'),
+    env: { ...process.env, CODEXBRIDGE_ROOT: tmp, CODEXBRIDGE_ALLOWED_ROOTS: tmp, CODEXBRIDGE_TOOL_MODE: '' }
+  });
+  await modeClient.request('initialize', {
+    protocolVersion: '2024-11-05',
+    capabilities: {},
+    clientInfo: { name: `codexbridge-${mode || 'default'}-smoke`, version: '0.1.0' }
+  });
+  modeClient.notify('notifications/initialized');
+  const modeTools = await modeClient.request('tools/list', {});
+  const names = modeTools.tools.map((tool) => tool.name);
+  for (const expectedName of expected) {
+    if (!names.includes(expectedName)) throw new Error(`${mode || 'default'} mode missing ${expectedName}; got ${names.join(', ')}`);
+  }
+  for (const hiddenName of hidden) {
+    if (names.includes(hiddenName)) throw new Error(`${mode || 'default'} mode should hide ${hiddenName}; got ${names.join(', ')}`);
+  }
+  modeClient.close();
+}
+
+await assertToolMode('', ['server_config', 'codexbridge_self_test', 'open_current_workspace', 'open_workspace', 'tree', 'search', 'load_skill', 'read', 'write', 'edit', 'preview_change_set', 'apply_change_set', 'preview_rollback_change_set', 'approval_review', 'task_brief', 'task_plan', 'task_verify', 'task_report', 'bash', 'ssh_profiles', 'ssh_exec', 'show_changes', 'operation_journal', 'read_handoff', 'export_pro_context', 'handoff_to_agent'], ['codexbridge_inventory', 'workspace_snapshot', 'git_status', 'git_diff', 'codex_context', 'handoff_to_codex']);
+await assertToolMode('minimal', ['server_config', 'codexbridge_self_test', 'open_current_workspace', 'open_workspace', 'read', 'write', 'edit', 'bash', 'show_changes'], ['tree', 'search', 'load_skill', 'preview_change_set', 'apply_change_set', 'preview_rollback_change_set', 'approval_review', 'task_brief', 'task_plan', 'task_verify', 'task_report', 'ssh_profiles', 'ssh_exec', 'operation_journal', 'read_handoff', 'export_pro_context', 'handoff_to_agent', 'codex_context']);
+
+// Fresh server process must still find the active task on disk
+const resumeRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-resume-'));
+await fs.writeFile(path.join(resumeRoot, 'demo.txt'), 'alpha\n', 'utf8');
+const planClient = new McpStdioClient('node', ['dist/stdio.js', '--root', resumeRoot, '--allow-root', resumeRoot], {
+  cwd: path.resolve('.'),
+  env: { ...process.env, CODEXBRIDGE_ROOT: resumeRoot, CODEXBRIDGE_ALLOWED_ROOTS: resumeRoot }
+});
+await planClient.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'codexbridge-resume-plan', version: '0.1.0' } });
+planClient.notify('notifications/initialized');
+const planRes = await planClient.request('tools/call', { name: 'task_plan', arguments: { goal: 'Cross-process resume', plan_steps: ['do x'] } });
+const crossId = planRes.structuredContent.task_id;
+planClient.close();
+
+const resumeClient = new McpStdioClient('node', ['dist/stdio.js', '--root', resumeRoot, '--allow-root', resumeRoot], {
+  cwd: path.resolve('.'),
+  env: { ...process.env, CODEXBRIDGE_ROOT: resumeRoot, CODEXBRIDGE_ALLOWED_ROOTS: resumeRoot }
+});
+await resumeClient.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'codexbridge-resume-read', version: '0.1.0' } });
+resumeClient.notify('notifications/initialized');
+const crossResume = await resumeClient.request('tools/call', { name: 'task_resume', arguments: {} });
+if (!crossResume.structuredContent.active || crossResume.structuredContent.task_id !== crossId) {
+  throw new Error(`fresh process did not resume task: ${JSON.stringify(crossResume.structuredContent)}`);
+}
+resumeClient.close();
+
+const standardCodexSessionsClient = new McpStdioClient('node', ['dist/stdio.js', '--root', tmp, '--allow-root', tmp], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_ROOT: tmp,
+    CODEXBRIDGE_ALLOWED_ROOTS: tmp,
+    CODEXBRIDGE_CODEX_SESSIONS: 'metadata',
+    CODEXBRIDGE_CODEX_DIR: codexHistoryDir
+  }
+});
+await standardCodexSessionsClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-standard-codex-sessions-smoke', version: '0.1.0' }
+});
+standardCodexSessionsClient.notify('notifications/initialized');
+const standardCodexSessionTools = await standardCodexSessionsClient.request('tools/list', {});
+const standardCodexSessionToolNames = standardCodexSessionTools.tools.map((tool) => tool.name);
+if (!standardCodexSessionToolNames.includes('codex_sessions')) {
+  throw new Error(`standard mode with Codex sessions enabled missed codex_sessions: ${standardCodexSessionToolNames.join(', ')}`);
+}
+if (standardCodexSessionToolNames.includes('read_codex_session')) {
+  throw new Error(`metadata mode should not expose read_codex_session: ${standardCodexSessionToolNames.join(', ')}`);
+}
+standardCodexSessionsClient.close();
+
+const fullTranscriptClient = new McpStdioClient('node', ['dist/stdio.js', '--root', tmp, '--allow-root', tmp, '--bash', 'safe'], {
+  cwd: path.resolve('.'),
+  env: { ...process.env, CODEXBRIDGE_ROOT: tmp, CODEXBRIDGE_ALLOWED_ROOTS: tmp, CODEXBRIDGE_BASH_TRANSCRIPT: 'full' }
+});
+await fullTranscriptClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-full-bash-transcript-smoke', version: '0.1.0' }
+});
+fullTranscriptClient.notify('notifications/initialized');
+const fullTranscriptBash = await fullTranscriptClient.request('tools/call', { name: 'bash', arguments: { command: 'pwd' } });
+const fullTranscriptText = fullTranscriptBash.content?.[0]?.text ?? '';
+if (!fullTranscriptText.includes('## stdout') || !fullTranscriptText.includes(tmp)) {
+  throw new Error(`full bash transcript mode did not preserve raw stdout in chat text: ${fullTranscriptText}`);
+}
+fullTranscriptClient.close();
+
+const emptyCodexDirClient = new McpStdioClient('node', ['dist/stdio.js', '--root', tmp, '--allow-root', tmp], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_ROOT: tmp,
+    CODEXBRIDGE_ALLOWED_ROOTS: tmp,
+    CODEXBRIDGE_CODEX_DIR: ''
+  }
+});
+await emptyCodexDirClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-empty-codex-dir-smoke', version: '0.1.0' }
+});
+emptyCodexDirClient.notify('notifications/initialized');
+const emptyCodexDirConfig = await emptyCodexDirClient.request('tools/call', { name: 'server_config', arguments: {} });
+const expectedDefaultCodexDir = path.join(os.homedir(), '.codex');
+if (emptyCodexDirConfig.structuredContent.codexDir !== expectedDefaultCodexDir) {
+  throw new Error(`empty CODEXBRIDGE_CODEX_DIR resolved to ${emptyCodexDirConfig.structuredContent.codexDir}, expected ${expectedDefaultCodexDir}`);
+}
+emptyCodexDirClient.close();
+
+const codexSessionsClient = new McpStdioClient('node', ['dist/stdio.js', '--root', tmp, '--allow-root', tmp, '--tool-mode', 'full'], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_ROOT: tmp,
+    CODEXBRIDGE_ALLOWED_ROOTS: tmp,
+    CODEXBRIDGE_CODEX_SESSIONS: 'read',
+    CODEXBRIDGE_CODEX_DIR: codexHistoryDir
+  }
+});
+await codexSessionsClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-codex-sessions-smoke', version: '0.1.0' }
+});
+codexSessionsClient.notify('notifications/initialized');
+const codexSessionTools = await codexSessionsClient.request('tools/list', {});
+const codexSessionToolNames = codexSessionTools.tools.map((tool) => tool.name);
+for (const expectedName of ['codex_sessions', 'read_codex_session']) {
+  if (!codexSessionToolNames.includes(expectedName)) {
+    throw new Error(`codex session opt-in mode missing ${expectedName}: ${codexSessionToolNames.join(', ')}`);
+  }
+}
+const codexSessions = await codexSessionsClient.request('tools/call', { name: 'codex_sessions', arguments: { max_sessions: 5 } });
+const session = codexSessions.structuredContent.sessions?.[0];
+if (!session || session.session_id !== '019cc369-bd7c-7891-b371-7b20b4fe0b18' || session.title !== 'Fix the smoke session browser' || session.project_dir !== tmp) {
+  throw new Error(`codex_sessions did not return parsed Codex metadata: ${JSON.stringify(codexSessions.structuredContent)}`);
+}
+if (session.resume_command !== 'codex resume 019cc369-bd7c-7891-b371-7b20b4fe0b18') {
+  throw new Error(`codex_sessions returned wrong resume command: ${JSON.stringify(session)}`);
+}
+const codexTranscript = await codexSessionsClient.request('tools/call', {
+  name: 'read_codex_session',
+  arguments: { session_id: '019cc369-bd7c-7891-b371-7b20b4fe0b18', max_messages: 10 }
+});
+if (!codexTranscript.content?.[0]?.text?.includes('Fix the smoke session browser') || !codexTranscript.content?.[0]?.text?.includes('[Tool: bash]')) {
+  throw new Error(`read_codex_session did not return bounded transcript text: ${codexTranscript.content?.[0]?.text}`);
+}
+const topOneSessions = await codexSessionsClient.request('tools/call', { name: 'codex_sessions', arguments: { max_sessions: 1 } });
+if (topOneSessions.structuredContent.sessions?.some?.((item) => item.session_id === olderCodexSessionId)) {
+  throw new Error(`codex_sessions max_sessions did not limit visible results: ${JSON.stringify(topOneSessions.structuredContent)}`);
+}
+const olderCodexTranscript = await codexSessionsClient.request('tools/call', {
+  name: 'read_codex_session',
+  arguments: { session_id: olderCodexSessionId, max_messages: 10 }
+});
+if (!olderCodexTranscript.content?.[0]?.text?.includes('Older session still readable by id')) {
+  throw new Error(`read_codex_session only searched visible list window: ${olderCodexTranscript.content?.[0]?.text}`);
+}
+const largeTailSessions = await codexSessionsClient.request('tools/call', { name: 'codex_sessions', arguments: { query: 'Large tail summary', max_sessions: 5 } });
+const largeTailSession = largeTailSessions.structuredContent.sessions?.find?.((item) => item.session_id === largeCodexSessionId);
+if (!largeTailSession || largeTailSession.summary !== 'Large tail summary') {
+  throw new Error(`codex_sessions did not parse summary from bounded tail window: ${JSON.stringify(largeTailSessions.structuredContent)}`);
+}
+codexSessionsClient.close();
+
+const sessionGuardClient = new McpStdioClient('node', [
+  'dist/stdio.js',
+  '--root',
+  tmp,
+  '--allow-root',
+  tmp,
+  '--bash',
+  'safe',
+  '--bash-session',
+  'codex-main',
+  '--require-bash-session'
+], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_ROOT: tmp,
+    CODEXBRIDGE_ALLOWED_ROOTS: tmp,
+    CODEXBRIDGE_BASH_SESSION_ID: '',
+    CODEXBRIDGE_REQUIRE_BASH_SESSION: ''
+  }
+});
+await sessionGuardClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-bash-session-smoke', version: '0.1.0' }
+});
+sessionGuardClient.notify('notifications/initialized');
+const guardedConfig = await sessionGuardClient.request('tools/call', { name: 'server_config', arguments: {} });
+if (guardedConfig.structuredContent.bashSessionId !== 'codex-main' || guardedConfig.structuredContent.requireBashSession !== true) {
+  throw new Error(`server_config did not expose bash session guard: ${JSON.stringify(guardedConfig.structuredContent)}`);
+}
+await expectToolError('bash', { command: 'pwd' }, /bash session/i, sessionGuardClient);
+await expectToolError('bash', { command: 'pwd', session_id: 'other-session' }, /codex-main/i, sessionGuardClient);
+const guardedBash = await sessionGuardClient.request('tools/call', { name: 'bash', arguments: { command: 'pwd', session_id: 'codex-main' } });
+if (guardedBash.structuredContent.bash_session_id !== 'codex-main' || !guardedBash.content?.[0]?.text?.includes('Exit: 0')) {
+  throw new Error(`bash session guard did not allow matching session id: ${JSON.stringify(guardedBash.structuredContent)}`);
+}
+const guardedSelfTest = await sessionGuardClient.request('tools/call', {
+  name: 'codexbridge_self_test',
+  arguments: { write_probe: false, pro_context_probe: false }
+});
+if (guardedSelfTest.structuredContent.status === 'fail') {
+  throw new Error(`codexbridge_self_test failed under bash session guard: ${JSON.stringify(guardedSelfTest.structuredContent.checks)}`);
+}
+sessionGuardClient.close();
+
+const nonGitRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-non-git-'));
+await fs.writeFile(path.join(nonGitRoot, 'README.md'), '# Non-git fixture\n', 'utf8');
+const nonGitClient = new McpStdioClient('node', ['dist/stdio.js', '--root', nonGitRoot, '--allow-root', nonGitRoot, '--tool-mode', 'full'], {
+  cwd: path.resolve('.'),
+  env: { ...process.env, CODEXBRIDGE_ROOT: nonGitRoot, CODEXBRIDGE_ALLOWED_ROOTS: nonGitRoot }
+});
+await nonGitClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-non-git-smoke', version: '0.1.0' }
+});
+nonGitClient.notify('notifications/initialized');
+const nonGitDiff = await nonGitClient.request('tools/call', { name: 'git_diff', arguments: { include_diff: false } });
+const nonGitPayload = JSON.stringify(nonGitDiff);
+if (!nonGitDiff.structuredContent.diff_error || !nonGitDiff.structuredContent.diff || nonGitDiff.structuredContent.changed) {
+  throw new Error(`git_diff include_diff=false hid non-git diagnostics: ${nonGitPayload}`);
+}
+if (!/not a git repository|git unavailable|fatal:|Git features require a Git repository in this folder\./i.test(nonGitPayload)) {
+  throw new Error(`git_diff include_diff=false did not preserve the git diagnostic text: ${nonGitPayload}`);
+}
+nonGitClient.close();
+
+const lowerAgentsRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-lower-agents-'));
+await fs.writeFile(path.join(lowerAgentsRoot, 'agents.md'), '# Lowercase agents\n\n- Lowercase instruction file loaded.\n', 'utf8');
+await fs.mkdir(path.join(lowerAgentsRoot, 'src'));
+await fs.writeFile(path.join(lowerAgentsRoot, 'src', 'demo.ts'), 'export const demo = true;\n', 'utf8');
+const lowerClient = new McpStdioClient('node', ['dist/stdio.js', '--root', lowerAgentsRoot, '--allow-root', lowerAgentsRoot, '--tool-mode', 'full'], {
+  cwd: path.resolve('.'),
+  env: { ...process.env, CODEXBRIDGE_ROOT: lowerAgentsRoot, CODEXBRIDGE_ALLOWED_ROOTS: lowerAgentsRoot }
+});
+await lowerClient.request('initialize', {
+  protocolVersion: '2024-11-05',
+  capabilities: {},
+  clientInfo: { name: 'codexbridge-lower-agents-smoke', version: '0.1.0' }
+});
+lowerClient.notify('notifications/initialized');
+const lowerOpened = await lowerClient.request('tools/call', { name: 'open_current_workspace', arguments: { include_tree: false } });
+if (lowerOpened.structuredContent.agents_path !== 'agents.md') {
+  throw new Error(`lowercase agents.md was reported as ${lowerOpened.structuredContent.agents_path}`);
+}
+const lowerContext = await lowerClient.request('tools/call', { name: 'codex_context', arguments: { target_path: 'src/demo.ts', include_ai_bridge: false, include_git: false } });
+if (!lowerContext.structuredContent.agents_files.includes('agents.md')) {
+  throw new Error(`codex_context did not preserve lowercase agents.md: ${lowerContext.structuredContent.agents_files.join(', ')}`);
+}
+if (!lowerContext.content?.[0]?.text?.includes('Lowercase instruction file loaded.')) {
+  throw new Error('codex_context did not include lowercase agents.md content');
+}
+lowerClient.close();
+console.log('✓ smoke test passed');

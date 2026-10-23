@@ -1,0 +1,18 @@
+<svg id="paused" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 260" role="img" aria-labelledby="title desc">
+<title id="title">A task continues across conversations</title><desc id="desc">Illustrative sequence: the Task Inbox saves scoped context, either coding client returns Git diffs and test evidence for review, and a fresh conversation reloads the project task. Recorded GCF activity only; no automatic model invocation or hidden memory synchronization. All steps remain visible when motion is reduced.</desc>
+<style>
+text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;fill:#24435c}.h{font-size:20px;font-weight:750}.s{font-size:15px;fill:#506e85}.step{fill:#fff;stroke:#c8deeb;stroke-width:1.5}.link{fill:none;stroke:#5298ad;stroke-width:2;stroke-dasharray:6 7;animation:move 8s linear infinite}.packet{fill:#287f91;animation:task 16s ease-in-out infinite}.review{animation:review 16s ease-in-out infinite}.resume{animation:resume 16s ease-in-out infinite}
+@keyframes move{to{stroke-dashoffset:-104}}@keyframes task{0%,8%{transform:translate(0,0)}35%,56%{transform:translate(365px,0)}83%,95%{transform:translate(728px,0)}100%{transform:translate(728px,0)}}
+@keyframes review{0%,26%,100%{stroke:#c8deeb}35%,60%{stroke:#287f91}}@keyframes resume{0%,70%,100%{stroke:#c8deeb}80%,95%{stroke:#287f91}}
+:root:target *{animation:none!important}:root:target .packet{display:none}
+  @media(prefers-reduced-motion:reduce){.link,.packet,.review,.resume{animation:none}.packet{display:none}}
+</style>
+<rect x="1" y="1" width="1078" height="258" rx="18" fill="#f1f8fc" stroke="#ccdeeb"/>
+<path class="link" d="M334 118H382M698 118H746"/>
+<rect class="step" x="18" y="24" width="316" height="210" rx="14"/><rect class="step review" x="382" y="24" width="316" height="210" rx="14"/><rect class="step resume" x="746" y="24" width="316" height="210" rx="14"/>
+<g fill="none" stroke="#2b7b99" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M49 58h37v33H49zm7 9h22m-22 8h16m-16 8h19"/><path d="m415 60-8 9 8 9m27-18 8 9-8 9m-9-23-6 30"/><path d="M778 71a18 18 0 1 1 7 15m-7-27v13h13"/></g>
+<text class="h" x="48" y="130">Save the task</text><text class="s" x="48" y="159">Task Inbox + project context</text><text class="s" x="48" y="184">A scoped handoff, ready to read</text>
+<text class="h" x="412" y="130">Review the result</text><text class="s" x="412" y="159">Either client codes</text><text class="s" x="412" y="184">Git diff + test evidence</text>
+<text class="h" x="776" y="130">Resume later</text><text class="s" x="776" y="159">Open a fresh conversation</text><text class="s" x="776" y="184">Reload the recorded project task</text>
+<circle class="packet" cx="72" cy="214" r="4"/>
+</svg>

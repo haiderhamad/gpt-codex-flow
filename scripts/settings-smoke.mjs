@@ -1,0 +1,164 @@
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
+function run(args, env) {
+  const result = spawnSync(process.execPath, ['scripts/codexbridge.mjs', ...args], {
+    cwd: path.resolve('.'),
+    env,
+    encoding: 'utf8'
+  });
+  if (result.status !== 0) {
+    throw new Error(`codexbridge ${args.join(' ')} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
+  return `${result.stdout}\n${result.stderr}`;
+}
+
+function runFail(args, env, pattern) {
+  const result = spawnSync(process.execPath, ['scripts/codexbridge.mjs', ...args], {
+    cwd: path.resolve('.'),
+    env,
+    encoding: 'utf8'
+  });
+  if (result.status === 0) {
+    throw new Error(`codexbridge ${args.join(' ')} unexpectedly succeeded\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+  }
+  const output = `${result.stdout}\n${result.stderr}`;
+  if (pattern && !pattern.test(output)) {
+    throw new Error(`codexbridge ${args.join(' ')} failed for the wrong reason\n${output}`);
+  }
+  return output;
+}
+
+async function readProfile(root, home) {
+  const realRoot = await fs.realpath(root);
+  const id = createHash('sha256').update(realRoot).digest('hex').slice(0, 24);
+  return JSON.parse(await fs.readFile(path.join(home, 'profiles', `${id}.json`), 'utf8'));
+}
+
+const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-root-'));
+const reuseRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-reuse-'));
+const home = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-home-'));
+const env = { ...process.env, CODEXBRIDGE_HOME: home };
+
+const help = run(['--help'], env);
+if (!help.includes('CodexBridge easy launcher') || !help.includes('codexbridge start')) {
+  throw new Error(`help did not prefer CodexBridge naming:\n${help}`);
+}
+for (const obsolete of ['ngrok', 'cloudflare-named']) {
+  runFail(['settings', 'set', '--root', root, '--tunnel', obsolete], env, /Only Cloudflare Quick Tunnel/);
+  runFail(['start', '--root', root, '--tunnel', obsolete], env, /Only Cloudflare Quick Tunnel/);
+}
+for (const obsolete of ['setup', 'onboard', 'stable', 'ngrok', 'stable-help']) {
+  runFail([obsolete], env, /Unsupported command/);
+}
+for (const obsolete of ['hostname', 'tunnel-name', 'ngrok', 'cloudflare-token', 'cloudflare-config']) {
+  runFail(['settings', 'set', '--root', root, '--'+obsolete, 'unused'], env, /Unsupported option/);
+}
+if (/ngrok|Named Tunnel|cloudflare-named|Secure MCP/i.test(help)) {
+  throw new Error('Help advertises a removed connection provider.');
+}
+const empty = run(['settings', 'show', '--root', root], env);
+if (!empty.includes('No saved settings')) {
+  throw new Error(`expected empty settings output, got:\n${empty}`);
+}
+
+const saved = run([
+  'settings',
+  'set',
+  '--root',
+  root,
+  '--tunnel',
+  'cloudflare',
+  '--port',
+  '19087',
+  '--mode',
+  'agent',
+  '--tool-mode',
+  'full',
+  '--bash-transcript',
+  'full',
+  '--widget-domain',
+  'https://widgets.codexbridge.test',
+  '--token',
+  'codexbridge-settings-token'
+], env);
+if (!saved.includes('Saved workspace settings')) {
+  throw new Error(`expected settings save output, got:\n${saved}`);
+}
+
+const shown = run(['settings', 'show', '--root', root], env);
+for (const expected of ['Tunnel', 'cloudflare', '19087', 'Bash transcript', 'full', '<saved>']) {
+  if (!shown.includes(expected)) {
+    throw new Error(`settings show missing ${expected}\n${shown}`);
+  }
+}
+if (shown.includes('codexbridge-settings-token')) {
+  throw new Error(`settings show leaked token\n${shown}`);
+}
+const profile = await readProfile(root, home);
+if (profile.toolMode !== 'full' || profile.bashTranscript !== 'full' || profile.widgetDomain !== 'https://widgets.codexbridge.test') {
+  throw new Error(`settings profile did not persist tool/widget options: ${JSON.stringify(profile)}`);
+}
+
+runFail([
+  'settings',
+  'set',
+  '--root',
+  root,
+  '--tunnel',
+  'cloudflare',
+  '--require-bash-session'
+], env, /requires --bash-session/i);
+
+const guarded = run([
+  'settings',
+  'set',
+  '--root',
+  root,
+  '--tunnel',
+  'cloudflare',
+  '--bash-session',
+  'guarded-main',
+  '--require-bash-session'
+], env);
+if (!guarded.includes('Bash session') || !guarded.includes('guarded-main required')) {
+  throw new Error(`settings save did not display guarded bash session\n${guarded}`);
+}
+const guardedProfile = await readProfile(root, home);
+if (guardedProfile.bashSession !== 'guarded-main' || guardedProfile.requireBashSession !== true) {
+  throw new Error(`settings profile did not persist bash session guard: ${JSON.stringify(guardedProfile)}`);
+}
+
+const listed = run(['settings', 'list'], env);
+if (!listed.includes(root) || !listed.includes('cloudflare')) {
+  throw new Error(`settings list missing saved profile\n${listed}`);
+}
+
+const reused = run(['settings', 'use', '--root', reuseRoot, '--from-root', root], env);
+if (!reused.includes('Saved workspace settings from')) {
+  throw new Error(`settings use did not save profile\n${reused}`);
+}
+
+const reusedShown = run(['settings', 'show', '--root', reuseRoot], env);
+for (const expected of ['cloudflare', '<saved>']) {
+  if (!reusedShown.includes(expected)) {
+    throw new Error(`reused settings show missing ${expected}\n${reusedShown}`);
+  }
+}
+
+const deleted = run(['settings', 'delete', '--root', root, '--yes'], env);
+if (!deleted.includes('Deleted saved settings')) {
+  throw new Error(`expected settings delete output, got:\n${deleted}`);
+}
+
+run(['settings', 'delete', '--root', reuseRoot, '--yes'], env);
+
+const afterDelete = run(['settings', 'show', '--root', root], env);
+if (!afterDelete.includes('No saved settings')) {
+  throw new Error(`expected empty settings after delete, got:\n${afterDelete}`);
+}
+
+console.log('✓ settings smoke test passed');

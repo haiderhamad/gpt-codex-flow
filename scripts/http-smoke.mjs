@@ -1,0 +1,430 @@
+import { spawn } from 'node:child_process';
+import fs from 'node:fs/promises';
+import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+
+async function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : undefined;
+      server.close(() => (port ? resolve(port) : reject(new Error('no free port'))));
+    });
+    server.on('error', reject);
+  });
+}
+
+function waitForListening(child) {
+  return new Promise((resolve, reject) => {
+    let stderr = '';
+    const timer = setTimeout(() => reject(new Error(`timeout waiting for HTTP server\n${stderr}`)), 15000);
+    timer.unref();
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+      if (stderr.includes('HTTP MCP listening')) {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`HTTP server exited before listening: ${code}\n${stderr}`));
+    });
+  });
+}
+
+function waitForExit(child, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    let stderr = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGTERM');
+      reject(new Error(`timeout waiting for process exit\n${stderr}`));
+    }, timeoutMs);
+    timer.unref();
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on('exit', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code, signal, stderr });
+    });
+  });
+}
+
+async function waitForHealthJson(url, timeoutMs = 15000) {
+  const started = Date.now();
+  let lastError = '';
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return await response.json();
+      lastError = `${response.status} ${await response.text()}`;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`timeout waiting for ${url}\n${lastError}`);
+}
+
+async function expectHttpTokenRequired(name, overrides = {}) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), `codexbridge-http-no-token-${name}-`));
+  const port = await getFreePort();
+  const env = {
+    ...process.env,
+    CODEXBRIDGE_ROOT: root,
+    CODEXBRIDGE_ALLOWED_ROOTS: root,
+    CODEXBRIDGE_HOST: '127.0.0.1',
+    CODEXBRIDGE_PORT: String(port),
+    CODEXBRIDGE_BASH_MODE: 'safe',
+    CODEXBRIDGE_WRITE_MODE: 'handoff',
+    ...overrides
+  };
+  delete env.CODEXBRIDGE_HTTP_TOKEN;
+  delete env.CODEXBRIDGE_HTTP_TOKEN;
+  delete env.CODEBASE_BRIDGE_HTTP_TOKEN;
+  delete env.CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN;
+  delete env.CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN;
+
+  const child = spawn('node', ['dist/http.js'], {
+    cwd: path.resolve('.'),
+    env,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  const result = await waitForExit(child);
+  if (result.code === 0) {
+    throw new Error(`expected ${name} HTTP server without token to fail closed`);
+  }
+  if (!result.stderr.includes('CODEXBRIDGE_HTTP_TOKEN is required')) {
+    throw new Error(`expected ${name} missing-token failure, got:\n${result.stderr}`);
+  }
+}
+
+async function listTools(url, token) {
+  const client = new Client({ name: 'codexbridge-http-smoke', version: '0.0.0' });
+  const transport = new StreamableHTTPClientTransport(new URL(url), {
+    requestInit: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+  });
+  try {
+    await client.connect(transport);
+    const result = await client.listTools();
+    return result.tools;
+  } finally {
+    await client.close();
+  }
+}
+
+function toolNames(tools) {
+  return tools.map((tool) => tool.name);
+}
+
+function hasWidgetMeta(tools, name, uri) {
+  const tool = tools.find((item) => item.name === name);
+  const meta = tool?._meta ?? {};
+  return meta.ui?.resourceUri === uri || meta['openai/outputTemplate'] === uri;
+}
+
+await expectHttpTokenRequired('non-loopback', { CODEXBRIDGE_HOST: '0.0.0.0' });
+await expectHttpTokenRequired('tunnel-mode', { CODEXBRIDGE_TUNNEL_MODE: '1' });
+
+async function withClient(url, fn) {
+  const client = new Client({ name: 'codexbridge-http-smoke', version: '0.0.0' });
+  const transport = new StreamableHTTPClientTransport(new URL(url));
+  try {
+    await client.connect(transport);
+    return await fn(client);
+  } finally {
+    await client.close();
+  }
+}
+
+async function callTool(client, name, args = {}) {
+  const result = await client.callTool({ name, arguments: args });
+  if (result.isError) {
+    const text = result.content?.find?.((part) => part.type === 'text')?.text ?? JSON.stringify(result.structuredContent);
+    throw new Error(`${name} failed: ${text}`);
+  }
+  return result;
+}
+
+const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-http-smoke-'));
+const profileHome = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-http-profile-home-'));
+await fs.mkdir(path.join(root, '.codex', 'skills', 'http-smoke-skill'), { recursive: true });
+await fs.writeFile(path.join(root, '.codex', 'skills', 'http-smoke-skill', 'SKILL.md'), [
+  '---',
+  'name: http-smoke-skill',
+  'description: HTTP smoke test skill discovery.',
+  '---',
+  '',
+  '# HTTP Smoke Skill',
+  ''
+].join('\n'), 'utf8');
+const port = await getFreePort();
+const token = 'codexbridge-http-smoke-token';
+const child = spawn('node', ['dist/http.js'], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_ROOT: root,
+    CODEXBRIDGE_ALLOWED_ROOTS: root,
+    CODEXBRIDGE_PORT: String(port),
+    CODEXBRIDGE_HTTP_TOKEN: token,
+    CODEXBRIDGE_BASH_MODE: 'safe',
+    CODEXBRIDGE_WRITE_MODE: 'handoff',
+    CODEXBRIDGE_TOOL_MODE: 'full',
+    CODEXBRIDGE_WIDGET_DOMAIN: 'https://widgets.codexbridge.test',
+    CODEXBRIDGE_HOME: profileHome
+  },
+  stdio: ['ignore', 'pipe', 'pipe']
+});
+
+try {
+  await waitForListening(child);
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const unauthorized = await fetch(`${baseUrl}/healthz`);
+  if (unauthorized.status !== 401) {
+    throw new Error(`expected unauthenticated healthz to return 401, got ${unauthorized.status}`);
+  }
+
+  const authorized = await fetch(`${baseUrl}/healthz`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (authorized.status !== 200) {
+    throw new Error(`expected authenticated healthz to return 200, got ${authorized.status}`);
+  }
+
+  const queryAuthorized = await fetch(`${baseUrl}/healthz?codexbridge_token=${encodeURIComponent(token)}`);
+  if (queryAuthorized.status !== 200) {
+    throw new Error(`expected URL-token healthz to return 200, got ${queryAuthorized.status}`);
+  }
+
+  const favicon = await fetch(`${baseUrl}/favicon.ico`);
+  if (favicon.status !== 200 || !favicon.headers.get('content-type')?.includes('image/svg+xml')) {
+    throw new Error(`expected unauthenticated favicon to return SVG 200, got ${favicon.status} ${favicon.headers.get('content-type')}`);
+  }
+
+  for (const route of ['/', '/setup']) {
+    const denied = await fetch(`${baseUrl}${route}`);
+    if (denied.status !== 401) {
+      throw new Error(`expected unauthenticated ${route} to return 401, got ${denied.status}`);
+    }
+    for (const auth of ['query', 'bearer']) {
+      const retired = await fetch(
+        `${baseUrl}${route}${auth === 'query' ? `?codexbridge_token=${encodeURIComponent(token)}` : ''}`,
+        auth === 'bearer' ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+      );
+      if (retired.status !== 410 || !retired.headers.get('content-type')?.includes('application/json')) {
+        throw new Error(`expected authenticated ${route} to return retirement JSON 410, got ${retired.status}`);
+      }
+      const body = await retired.json();
+      if (typeof body.error !== 'string' || !body.error.includes('Legacy Admin retired') ||
+          !body.error.includes('Control Center') || !body.error.includes('npm run gcf:ui')) {
+        throw new Error(`missing retirement guidance for ${route}`);
+      }
+      if (JSON.stringify(body).includes(token)) {
+        throw new Error(`retirement response for ${route} leaked the raw auth token`);
+      }
+    }
+  }
+
+  const profileBefore = await fetch(`${baseUrl}/admin/profile?codexbridge_token=${encodeURIComponent(token)}`);
+  const profileBeforeJson = await profileBefore.json();
+  if (profileBefore.status !== 200 || profileBeforeJson.exists !== false) {
+    throw new Error(`expected empty admin profile response, got ${profileBefore.status} ${JSON.stringify(profileBeforeJson)}`);
+  }
+  if (JSON.stringify(profileBeforeJson).includes(token)) {
+    throw new Error('admin profile GET leaked the raw auth token');
+  }
+
+  for (const method of ['POST','PUT','PATCH','DELETE']) {
+    const denied = await fetch(`${baseUrl}/admin/profile?codexbridge_token=${encodeURIComponent(token)}`, {
+      method, headers: {'content-type':'application/json'},
+      body: JSON.stringify({tunnel:'none',write:'off',bash:'off'})
+    });
+    const result = await denied.json();
+    if (denied.status !== 403 || result.error?.code !== 'owner_local_policy_required') {
+      throw new Error(`${method} profile must reject all remote owner mutations`);
+    }
+  }
+  for (const route of ['owner/status','owner/session','owner/preview']) {
+    for (const method of ['GET','POST']) {
+      const denied = await fetch(`${baseUrl}/${route}`, {
+        method, headers: {Authorization:`Bearer ${token}`}
+      });
+      if (denied.status !== 403) throw new Error(`${method} ${route} exposed on MCP listener`);
+    }
+  }
+  const profileAfter = await fetch(`${baseUrl}/admin/profile?codexbridge_token=${encodeURIComponent(token)}`);
+  if ((await profileAfter.json()).exists !== false) throw new Error('Remote requests created a saved profile');
+
+  const queryTools = await listTools(`${baseUrl}/mcp?codexbridge_token=${encodeURIComponent(token)}`);
+  const queryToolNames = toolNames(queryTools);
+  for (const expected of ['server_config', 'codexbridge_self_test', 'codexbridge_inventory', 'open_current_workspace', 'open_workspace', 'workspace_snapshot', 'load_skill', 'show_changes', 'codex_context', 'handoff_to_agent', 'handoff_to_codex', 'export_pro_context']) {
+    if (!queryToolNames.includes(expected)) {
+      throw new Error(`URL-token MCP tools/list missing ${expected}; got ${queryToolNames.join(', ')}`);
+    }
+  }
+  const toolCardUri = 'ui://widget/codexbridge-tool-card-v1.html';
+  for (const visualTool of queryToolNames) {
+    if (!hasWidgetMeta(queryTools, visualTool, toolCardUri)) {
+      throw new Error(`${visualTool} should render the CodexBridge widget`);
+    }
+  }
+
+  const headerTools = await listTools(`${baseUrl}/mcp`, token);
+  const headerToolNames = toolNames(headerTools);
+  if (!headerToolNames.includes('server_config')) {
+    throw new Error(`bearer MCP tools/list missing server_config; got ${headerToolNames.join(', ')}`);
+  }
+
+  const mcpUrl = `${baseUrl}/mcp?codexbridge_token=${encodeURIComponent(token)}`;
+  await withClient(mcpUrl, async (client) => {
+    const resources = await client.listResources();
+    const toolCard = resources.resources.find((resource) => resource.uri === toolCardUri);
+    if (!toolCard) throw new Error(`HTTP MCP resources/list missing ${toolCardUri}`);
+    if (toolCard.mimeType !== 'text/html;profile=mcp-app') {
+      throw new Error(`unexpected HTTP tool-card mime type: ${toolCard.mimeType}`);
+    }
+    const widget = await client.readResource({ uri: toolCardUri });
+    const widgetText = widget.contents?.[0]?.text ?? '';
+    const widgetMeta = widget.contents?.[0]?._meta ?? {};
+    if (!widgetText.includes('Waiting for tool result') || !widgetText.includes('renderWorkspace') || !widgetText.includes('renderSelfTest') || !widgetText.includes('details class="fold"') || !widgetText.includes('ui/notifications/tool-result')) {
+      throw new Error('HTTP tool-card widget resource did not include expected Apps bridge code');
+    }
+    if (!widgetMeta.ui?.csp || !widgetMeta['openai/widgetCSP']) {
+      throw new Error('HTTP tool-card widget resource did not expose standard and ChatGPT CSP metadata');
+    }
+    if (widgetMeta.ui?.domain !== 'https://widgets.codexbridge.test' || widgetMeta['openai/widgetDomain'] !== 'https://widgets.codexbridge.test') {
+      throw new Error('HTTP tool-card widget resource did not expose standard and ChatGPT widget domain metadata');
+    }
+  });
+
+  const currentOpened = await withClient(mcpUrl, async (client) => {
+    const result = await callTool(client, 'open_current_workspace', { include_tree: false });
+    if (result.structuredContent.codexbridge_tool !== 'open_current_workspace') {
+      throw new Error('HTTP tool result was not tagged for widget rendering');
+    }
+    if (result.structuredContent.tool_mode !== 'full') {
+      throw new Error(`open_current_workspace did not expose tool_mode: ${result.structuredContent.tool_mode}`);
+    }
+    if (!result.structuredContent.skill_inventory?.some?.((skill) => skill.name === 'http-smoke-skill')) {
+      throw new Error('HTTP open_current_workspace did not discover workspace skill inventory');
+    }
+    return result.structuredContent.workspace_id;
+  });
+
+  await withClient(mcpUrl, async (client) => {
+    const inventory = await callTool(client, 'codexbridge_inventory', {
+      include_global_skills: false,
+      include_mcp_servers: false
+    });
+    if (inventory.structuredContent.codexbridge_tool !== 'codexbridge_inventory') {
+      throw new Error('HTTP inventory result was not tagged for widget rendering');
+    }
+    const loadedSkill = await callTool(client, 'load_skill', {
+      name: 'http-smoke-skill',
+      source: 'workspace'
+    });
+    if (loadedSkill.structuredContent.skill?.name !== 'http-smoke-skill' || !loadedSkill.structuredContent.text?.includes('# HTTP Smoke Skill')) {
+      throw new Error('HTTP load_skill did not return bounded SKILL.md content');
+    }
+  });
+
+  const opened = await withClient(mcpUrl, async (client) => {
+    const result = await callTool(client, 'open_workspace', { include_tree: false });
+    return result.structuredContent.workspace_id;
+  });
+  if (opened !== currentOpened) {
+    throw new Error(`open_current_workspace returned ${currentOpened}, open_workspace default returned ${opened}`);
+  }
+
+  await withClient(mcpUrl, async (client) => {
+    const list = await callTool(client, 'list_workspaces');
+    const ids = list.structuredContent.workspaces.map((workspace) => workspace.id);
+    if (!ids.includes(opened)) {
+      throw new Error(`cross-session list_workspaces missing ${opened}; got ${ids.join(', ')}`);
+    }
+
+    const snapshot = await callTool(client, 'workspace_snapshot', { workspace_id: opened, max_depth: 1 });
+    if (snapshot.structuredContent.workspace_id !== opened) {
+      throw new Error(`workspace_snapshot returned ${snapshot.structuredContent.workspace_id}, expected ${opened}`);
+    }
+
+    const tree = await callTool(client, 'tree', { workspace_id: opened, max_depth: 1, max_entries: 10 });
+    if (tree.structuredContent.workspace_id !== opened) {
+      throw new Error(`tree returned ${tree.structuredContent.workspace_id}, expected ${opened}`);
+    }
+
+    const codexContext = await callTool(client, 'codex_context', { workspace_id: opened });
+    if (codexContext.structuredContent.workspace_id !== opened) {
+      throw new Error(`codex_context returned ${codexContext.structuredContent.workspace_id}, expected ${opened}`);
+    }
+  });
+
+  try {
+    await fs.stat(path.join(root, '.ai-bridge'));
+    throw new Error('read-only HTTP smoke path created .ai-bridge unexpectedly');
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+
+  await withClient(mcpUrl, async (client) => {
+    const exported = await callTool(client, 'export_pro_context', {
+      workspace_id: opened,
+      max_files: 4,
+      max_total_bytes: 80000
+    });
+    if (exported.structuredContent.path !== '.ai-bridge/pro-context.md') {
+      throw new Error(`unexpected pro context path: ${exported.structuredContent.path}`);
+    }
+  });
+  await fs.stat(path.join(root, '.ai-bridge', 'pro-context.md'));
+} finally {
+  child.kill('SIGTERM');
+}
+
+const cliRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-cli-http-smoke-'));
+await fs.mkdir(path.join(cliRoot, '.codex'), { recursive: true });
+const cliPort = await getFreePort();
+const cliChild = spawn(process.execPath, [
+  'scripts/codexbridge.mjs',
+  'start',
+  '--root',
+  cliRoot,
+  '--tunnel',
+  'none',
+  '--no-auth',
+  '--port',
+  String(cliPort),
+  '--codex-sessions',
+  'metadata',
+  '--codex-dir',
+  '.codex'
+], {
+  cwd: path.resolve('.'),
+  env: {
+    ...process.env,
+    CODEXBRIDGE_HOME: await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-cli-http-home-'))
+  },
+  stdio: ['ignore', 'pipe', 'pipe']
+});
+try {
+  await waitForHealthJson(`http://127.0.0.1:${cliPort}/healthz`);
+  const expectedCliCodexDir = path.join(await fs.realpath(cliRoot), '.codex');
+  await withClient(`http://127.0.0.1:${cliPort}/mcp`, async (client) => {
+    const config = await callTool(client, 'server_config');
+    if (config.structuredContent.codexDir !== expectedCliCodexDir) {
+      throw new Error(`relative --codex-dir resolved to ${config.structuredContent.codexDir}, expected ${expectedCliCodexDir}`);
+    }
+  });
+} finally {
+  cliChild.kill('SIGTERM');
+  await waitForExit(cliChild).catch(() => {});
+}
+
+console.log('✓ http smoke test passed');

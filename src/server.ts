@@ -66,7 +66,7 @@ function bashTextResult(config: CodexBridgeConfig, result: Awaited<ReturnType<ty
     `Duration: ${result.durationMs} ms`,
     `Output: stdout ${stdoutLines} line${stdoutLines === 1 ? "" : "s"}, stderr ${stderrLines} line${stderrLines === 1 ? "" : "s"}.`,
     "",
-    "Raw stdout/stderr are in the structured CodexBridge card. Start with `--bash-transcript full` to print raw output in chat."
+    "Raw stdout/stderr are in the structured GPT Codex Flow card. Start with `--bash-transcript full` to print raw output in chat."
   ].join("\n");
 }
 
@@ -105,7 +105,7 @@ function sshTextResult(result: SshExecResult): string {
     `Duration: ${result.durationMs} ms`,
     `Output: stdout ${stdoutLines} line${stdoutLines === 1 ? "" : "s"}, stderr ${stderrLines} line${stderrLines === 1 ? "" : "s"}.`,
     "",
-    "Raw stdout/stderr are in the structured CodexBridge card."
+    "Raw stdout/stderr are in the structured GPT Codex Flow card."
   ].join("\n");
 }
 
@@ -174,7 +174,7 @@ function registerToolCardResource(server: McpServer, config: CodexBridgeConfig):
                 resourceDomains: []
               }
             },
-            "openai/widgetDescription": "Renders CodexBridge workspace orientation, diagnostics, file diffs, change reviews, terminal checks, Pro context exports, and handoff plans as compact developer cards with bounded previews.",
+            "openai/widgetDescription": "Renders GPT Codex Flow workspace orientation, diagnostics, file diffs, change reviews, terminal checks, Pro context exports, and handoff plans as compact developer cards with bounded previews.",
             "openai/widgetPrefersBorder": true,
             "openai/widgetDomain": config.widgetDomain,
             "openai/widgetCSP": {
@@ -390,7 +390,7 @@ function registerCodexTool(
 
 function serverInstructions(config: CodexBridgeConfig): string {
   return [
-    "CodexBridge connects ChatGPT to user-allowed local development workspaces.",
+    "GPT Codex Flow connects ChatGPT to user-allowed local development workspaces.",
     "",
     "Preferred workflow:",
     config.allowedRoots.length > 1
@@ -769,7 +769,7 @@ export function createCodexBridgeServer(config: CodexBridgeConfig): McpServer {
   const workspaces = getSharedWorkspaceManager(config);
   const aliases = new ProjectAliasRegistry(config.projectAliasFile);
   const guard = new PathGuard(config);
-  const server = new McpServer({ name: "CodexBridge", version: "0.28.5" }, { instructions: serverInstructions(config) });
+  const server = new McpServer({ name: "GPT Codex Flow", version: "0.28.5" }, { instructions: serverInstructions(config) });
   registerToolCardResource(server, config);
 
   registerCodexTool(
@@ -1631,8 +1631,8 @@ export function createCodexBridgeServer(config: CodexBridgeConfig): McpServer {
       annotations: READ_ONLY_ANNOTATIONS,
       _meta: {
         ...toolCardMeta(),
-        "openai/toolInvocation/invoking": "Listing CodexBridge workspaces...",
-        "openai/toolInvocation/invoked": "CodexBridge workspaces listed"
+        "openai/toolInvocation/invoking": "Listing GPT Codex Flow workspaces...",
+        "openai/toolInvocation/invoked": "GPT Codex Flow workspaces listed"
       }
     },
     async () => {
@@ -1916,8 +1916,8 @@ export function createCodexBridgeServer(config: CodexBridgeConfig): McpServer {
       annotations: SESSION_READ_ANNOTATIONS,
       _meta: {
         ...toolCardMeta(),
-        "openai/toolInvocation/invoking": "Opening current CodexBridge workspace...",
-        "openai/toolInvocation/invoked": "Current CodexBridge workspace opened"
+        "openai/toolInvocation/invoking": "Opening current GPT Codex Flow workspace...",
+        "openai/toolInvocation/invoked": "Current GPT Codex Flow workspace opened"
       }
     },
     async (args) => {
@@ -1977,8 +1977,8 @@ export function createCodexBridgeServer(config: CodexBridgeConfig): McpServer {
       annotations: SESSION_READ_ANNOTATIONS,
       _meta: {
         ...toolCardMeta(),
-        "openai/toolInvocation/invoking": "Opening CodexBridge workspace...",
-        "openai/toolInvocation/invoked": "CodexBridge workspace opened"
+        "openai/toolInvocation/invoking": "Opening GPT Codex Flow workspace...",
+        "openai/toolInvocation/invoked": "GPT Codex Flow workspace opened"
       }
     },
     async (args) => {

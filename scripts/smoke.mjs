@@ -166,11 +166,12 @@ for (const removedBin of [removedProjectName, `${removedProjectName}-mcp`, `${re
   if (packageJson.bin?.[removedBin]) throw new Error(`package bin should be removed: ${removedBin}`);
 }
 
-await client.request('initialize', {
+const initialization = await client.request('initialize', {
   protocolVersion: '2024-11-05',
   capabilities: {},
   clientInfo: { name: 'codexbridge-smoke', version: '0.1.0' }
 });
+if (initialization.serverInfo?.name !== 'GPT Codex Flow') throw new Error('Unexpected MCP display name');
 client.notify('notifications/initialized');
 const tools = await client.request('tools/list', {});
 const toolNames = tools.tools.map((tool) => tool.name);
@@ -209,6 +210,7 @@ if (toolCard.mimeType !== 'text/html;profile=mcp-app') throw new Error(`unexpect
 const widget = await client.request('resources/read', { uri: toolCardUri });
 const widgetText = widget.contents?.[0]?.text ?? '';
 const widgetMeta = widget.contents?.[0]?._meta ?? {};
+if (!widgetText.includes('<div class="title">GPT Codex Flow</div>')) throw new Error('Unexpected widget heading');
 if (!widgetText.includes('Waiting for tool result') || !widgetText.includes('renderWorkspace') || !widgetText.includes('renderSelfTest') || !widgetText.includes('details class="fold"') || !widgetText.includes('ui/notifications/tool-result')) {
   throw new Error('tool-card widget resource did not include expected Apps bridge code');
 }

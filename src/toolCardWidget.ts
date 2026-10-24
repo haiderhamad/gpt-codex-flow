@@ -8,7 +8,7 @@ export const toolCardWidgetHtml = String.raw`
     <header class="head">
       <span class="glyph">C</span>
       <div class="headline">
-        <div class="title">CodexBridge</div>
+        <div class="title">GPT Codex Flow</div>
         <div class="subtitle">Waiting for tool result...</div>
       </div>
       <span class="pill info">waiting</span>
@@ -470,7 +470,7 @@ export const toolCardWidgetHtml = String.raw`
       search: "Search",
       read: "Read file"
     };
-    return titles[tool] || "CodexBridge";
+    return titles[tool] || "GPT Codex Flow";
   }
 
   function iconFor(tool) {
@@ -888,7 +888,7 @@ export const toolCardWidgetHtml = String.raw`
       '<div class="rail"></div>',
       '<header class="head">',
       '<span class="glyph">C</span>',
-      '<div class="headline"><div class="title">CodexBridge</div><div class="subtitle">Waiting for tool result...</div></div>',
+      '<div class="headline"><div class="title">GPT Codex Flow</div><div class="subtitle">Waiting for tool result...</div></div>',
       '<span class="pill info">waiting</span>',
       '</header>',
       '<div class="skeleton"><span></span><span></span><span></span></div>',

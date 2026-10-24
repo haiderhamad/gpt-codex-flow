@@ -1,6 +1,6 @@
 <svg id="paused" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 460" role="img" aria-labelledby="title desc">
-<title id="title">GPT Codex Flow — one project, two coding assistants, clear handoffs</title>
-<desc id="desc">ChatGPT and Codex CLI can both code, debug, test, plan and review through their permitted tools. GPT Codex Flow connects approved local project folders using MCP, Task Inbox and Transfer Control. The local Control Center helps the owner choose folders and access. Git changes can be reviewed when a project is a repository. Moving signals illustrate possible handoffs; they do not imply live status, automatic model switching or universal OS sandbox isolation.</desc>
+<title id="title">GPT Codex Flow — ChatGPT and Codex App &amp; CLI task handoffs</title>
+<desc id="desc">ChatGPT and Codex App and CLI can both code, debug, test, plan and review through their configured MCP integrations and permitted tools. GPT Codex Flow carries task handoffs and recorded project context through MCP, Task Inbox and Transfer Control. Control Center manages owner-selected access to approved folders, including ordinary folders and Git repositories. Project context, Skills and Agent Profiles support continuation. Git review features require a Git repository. The illustrative task and result loop is not live execution, automatic model switching or complete conversation synchronization. Separately authorized native Codex task execution uses the CLI, not App GUI automation.</desc>
 <defs>
   <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f9fcff"/><stop offset="1" stop-color="#eaf4fb"/></linearGradient>
   <linearGradient id="hub" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#f4faff"/></linearGradient>
@@ -11,15 +11,15 @@
   .label{font-size:18px;font-weight:750}
   .detail{font-size:12px;fill:#4d6b81}
   .micro{font-size:10.5px;fill:#52758d}
-  .signal{fill:none;stroke:#3b8eab;stroke-width:2;stroke-dasharray:5 8;animation:signal 5s linear infinite}
+  .signal{fill:none;stroke:#3b8eab;stroke-width:2;stroke-dasharray:5 8;animation:signal 8s linear infinite}
   .packet{opacity:0;animation-duration:16s;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
   .packet rect{fill:#287f91;stroke:#fff;stroke-width:1.5}
   .packet text{fill:#fff;font-size:11px;font-weight:750;text-anchor:middle}
   .outbound{animation-name:outbound}.return{animation-name:return}
   .evidence{animation:evidence 16s ease-in-out infinite}
-  @keyframes outbound{0%,4%{opacity:0;transform:translate(165px,158px)}8%{opacity:1;transform:translate(165px,176px)}17%,24%{opacity:1;transform:translate(320px,184px)}34%,40%{opacity:1;transform:translate(475px,158px)}45%,100%{opacity:0;transform:translate(475px,158px)}}
-  @keyframes return{0%,54%{opacity:0;transform:translate(475px,158px)}58%{opacity:1;transform:translate(475px,176px)}68%,75%{opacity:1;transform:translate(320px,184px)}85%,91%{opacity:1;transform:translate(165px,158px)}96%,100%{opacity:0;transform:translate(165px,158px)}}
-  @keyframes evidence{0%,34%,100%{stroke:#c9deee}44%,88%{stroke:#287f91}}
+  @keyframes outbound{0%,4%{opacity:0;transform:translate(165px,170px)}7%{opacity:1;transform:translate(165px,170px)}13%{opacity:1;transform:translate(165px,180px)}22%{opacity:1;transform:translate(320px,180px)}26%,31%{opacity:1;transform:translate(320px,200px)}35%{opacity:1;transform:translate(320px,180px)}44%{opacity:1;transform:translate(475px,180px)}48%{opacity:1;transform:translate(475px,170px)}51%,100%{opacity:0;transform:translate(475px,170px)}}
+  @keyframes return{0%,54%{opacity:0;transform:translate(475px,170px)}57%{opacity:1;transform:translate(475px,170px)}59%{opacity:1;transform:translate(475px,180px)}68%{opacity:1;transform:translate(320px,180px)}72%,77%{opacity:1;transform:translate(320px,200px)}81%{opacity:1;transform:translate(320px,180px)}90%{opacity:1;transform:translate(165px,180px)}94%{opacity:1;transform:translate(165px,170px)}97%,100%{opacity:0;transform:translate(165px,170px)}}
+  @keyframes evidence{0%,44%,100%{stroke:#c9deee}51%,90%{stroke:#8db8ca}}
   .chip-label{font-size:11px;font-weight:700;fill:#255e79}
 
   @keyframes signal{to{stroke-dashoffset:-130}}
@@ -42,12 +42,13 @@
  <rect x="338" y="62" width="280" height="96" rx="16"/>
 </g>
 <g fill="none" stroke="#2a7c94" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
- <path transform="translate(0 -2.5)" d="M47 88h30v22H61l-8 7v-7h-6z"/>
- <path transform="translate(0 -.5)" d="m370 91-8 9 8 9m14-18 8 9-8 9m-8-24-6 31"/>
+ <path transform="translate(0 -8.5)" d="M47 88h30v22H61l-8 7v-7h-6z"/>
+ <path transform="translate(0 -6.5)" d="m370 91-8 9 8 9m14-18 8 9-8 9m-8-24-6 31"/>
 </g>
-<text class="label" x="91" y="100" dominant-baseline="central">ChatGPT</text>
+<text class="label" x="91" y="94" dominant-baseline="central">ChatGPT</text>
 <text class="detail" x="46" y="136">Code · debug · test · plan · review</text>
-<text class="label" x="404" y="100" dominant-baseline="central">Codex CLI</text>
+<text class="label" x="404" y="94" dominant-baseline="central">Codex</text>
+<text class="detail" x="404" y="118">App &amp; CLI</text>
 <text class="detail" x="361" y="136">Code · debug · test · plan · review</text>
 
 <!-- Current v1 GCF capabilities, without obsolete Broker/XPC or unattended claims. -->
@@ -65,7 +66,7 @@
 <text class="chip-label" x="286" y="270" text-anchor="middle">Task Inbox</text>
 <text class="chip-label" x="440" y="270" text-anchor="middle">Transfer Control</text>
 <path d="m118 292 3 3-3 3m8-6-3 3 3 3" fill="none" stroke="#287f91" stroke-width="1.4"/>
-<text class="micro" x="134" y="301">Control Center · project context · Skills</text>
+<text class="micro" x="134" y="301">Control Center · Project context · Skills and Agent Profiles</text>
 <rect x="206" y="324" width="228" height="23" rx="11.5" fill="#e1eff5"/>
 <text x="320" y="339" text-anchor="middle" font-size="10.2" font-weight="700" fill="#41647b">OWNER-SELECTED ACCESS</text>
 
@@ -78,7 +79,7 @@
  <circle cx="138" cy="407" r="3" fill="#fff"/>
 </g>
 <text x="156" y="386" dominant-baseline="central" font-size="17" font-weight="750">Approved projects</text>
-<text class="detail" x="156" y="412">Git diff + test evidence → review</text>
+<text class="detail" x="156" y="412">Git changes (when available) · Tests · Review</text>
 <text x="320" y="448" class="micro" text-anchor="middle">Illustrative handoff · both directions · no live data</text>
 <!-- One task travels through the Inbox, then its result returns. Static labels remain readable. -->
 <g class="packet outbound" aria-hidden="true"><rect x="-23" y="-11" width="46" height="22" rx="8"/><text y="4">Task</text></g>

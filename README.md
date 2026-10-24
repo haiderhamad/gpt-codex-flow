@@ -10,7 +10,8 @@
 </p>
 <p align="center"><a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#security">Security</a> · <a href="#troubleshooting">Troubleshooting</a></p>
 
-<p align="center"><img src="docs/gcf-preview/architecture-light.svg" width="640" alt="ChatGPT and Codex exchange coding tasks and results through GPT Codex Flow"></p>
+<p align="center"><img src="docs/gcf-preview/architecture-overview.gif" width="640" height="460" alt="Illustrative loop: ChatGPT hands a task through GPT Codex Flow to Codex App and CLI, then a result returns through GCF"></p>
+<p align="center"><a href="docs/gcf-preview/architecture-light.svg#paused">Static architecture diagram (SVG)</a></p>
 
 ## Quick start
 

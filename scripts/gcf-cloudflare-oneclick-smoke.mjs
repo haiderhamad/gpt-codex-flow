@@ -50,13 +50,13 @@ try{
   const result=(await response.json()).cloudflare;
   assert.equal(result.state,'tunnel_ready');assert.equal(result.access,'read');assert.equal(result.project,a);assert.deepEqual(result.projects,[a]);
   assert.ok(result.serverUrl.startsWith('https://qa-fixture.trycloudflare.com/mcp?'));
-  assert.equal(new URL(result.serverUrl).searchParams.get('codexbridge_token')?.length,64);
+  assert.equal(new URL(result.serverUrl).searchParams.get('gcf_token')?.length,64);
   assert.equal((await request('/owner/cloudflare',{action:'start',projects:[b],access:'edit',fullAccessConfirmed:false},auth)).status,400,'stop before switching');
   const port=Number(fs.readFileSync(report,'utf8'));
   assert.ok(Number.isInteger(port)&&port>0);
   const url='http://127.0.0.1:'+port;
   assert.equal((await fetch(url+'/healthz')).status,401);
-  const token=new URL(result.serverUrl).searchParams.get('codexbridge_token');
+  const token=new URL(result.serverUrl).searchParams.get('gcf_token');
   response=await fetch(url+'/healthz',{headers:{Authorization:'Bearer '+token}});
   assert.equal(response.status,200,'real local MCP requires its token');
   const config=await(await fetch(url+'/admin/profile',{headers:{Authorization:'Bearer '+token}})).json();
@@ -81,7 +81,7 @@ try{
   assert.deepEqual(multi.projects,[a,b]);assert.equal(multi.access,'edit');
   const multiPort=Number(fs.readFileSync(report,'utf8'));
   const multiUrl='http://127.0.0.1:'+multiPort;
-  const multiToken=new URL(multi.serverUrl).searchParams.get('codexbridge_token');
+  const multiToken=new URL(multi.serverUrl).searchParams.get('gcf_token');
   assert.notEqual(multiToken,token,'reconnect rotates bearer token');
   const multiHealth=await(await fetch(multiUrl+'/healthz',{headers:{Authorization:'Bearer '+multiToken}})).json();
   assert.deepEqual(multiHealth.allowedRoots,[a,b]);assert.equal(multiHealth.writeMode,'workspace');assert.equal(multiHealth.bashMode,'off');

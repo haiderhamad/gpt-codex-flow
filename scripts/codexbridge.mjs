@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function usage() {
-  console.log(`CodexBridge easy launcher — GPT Codex Flow compatibility helpers
+  console.log(`GPT Codex Flow connection and compatibility helpers
 
 Use gcf ui for owner-local setup and Cloudflare Quick Tunnel access.
 Cloudflare Quick Tunnel is the only supported public connection.
@@ -353,7 +353,7 @@ function saveRuntimeConnection(root, details, options = {}) {
     updatedAt: new Date().toISOString(),
     endpoint: details.endpoint,
     localBase: options.localBase ?? '',
-    localStatusUrl: details.localStatusUrl ? details.localStatusUrl.replace(/codexbridge_token=[^&]+/, 'codexbridge_token=<redacted>') : '',
+    localStatusUrl: details.localStatusUrl ? details.localStatusUrl.replace(/(gcf_token|codexbridge_token)=[^&]+/, '$1=<redacted>') : '',
     tunnel: options.tunnel ?? '',
     mode: options.mode ?? '',
     bash: options.bash ?? '',
@@ -735,7 +735,7 @@ function cleanupChildren() {
 function endpointWithToken(endpoint, token) {
   if (!token) return endpoint;
   const url = new URL(endpoint);
-  url.searchParams.set('codexbridge_token', token);
+  url.searchParams.set('gcf_token', token);
   return url.toString();
 }
 
@@ -974,7 +974,7 @@ function runProjectInit(argv) {
     }
   }
 
-  printBox('CodexBridge project init', [
+  printBox('GPT Codex Flow project init', [
     labelValue('Repository', root),
     labelValue('Created', created.length ? created.join(', ') : 'none'),
     labelValue('Preserved', skipped.length ? skipped.join(', ') : 'none'),
@@ -1277,7 +1277,7 @@ async function confirmLocalExecution(args, root, commandInfo) {
     labelValue('Agent', commandInfo.agent),
     ...(commandInfo.model ? [labelValue('Model', commandInfo.model)] : []),
     labelValue('Command', executorCommandPreview(commandInfo)),
-    'This runs a local process in the workspace. CodexBridge will collect status, logs, and git diff into .ai-bridge.'
+    'This runs a local process in the workspace. GPT Codex Flow will collect status, logs, and git diff into .ai-bridge.'
   ]);
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
@@ -1315,7 +1315,7 @@ function loadHandoffExecution(args) {
   };
 }
 
-function printHandoffDryRun(request, title = 'CodexBridge execute-handoff dry run') {
+function printHandoffDryRun(request, title = 'GPT Codex Flow execute-handoff dry run') {
   printBox(title, [
     labelValue('Workspace', request.root),
     labelValue('Plan', path.relative(request.root, request.planPath)),
@@ -1456,7 +1456,7 @@ async function runWatchHandoff(argv) {
     }
   }
 
-  printBox('CodexBridge watch-handoff', [
+  printBox('GPT Codex Flow watch-handoff', [
     labelValue('Workspace', root),
     labelValue('Plan', path.relative(root, planPath)),
     labelValue('State', path.relative(root, statePath)),
@@ -1505,7 +1505,7 @@ async function runWatchHandoff(argv) {
     }
 
     if (args.dryRun) {
-      printHandoffDryRun(request, 'CodexBridge watch-handoff dry run');
+      printHandoffDryRun(request, 'GPT Codex Flow watch-handoff dry run');
       lastDryRunHash = currentHash;
       if (args.once) return;
       await sleep(pollIntervalMs);
@@ -1564,7 +1564,7 @@ function createConnectorDetails(endpoint, token, localBase = '') {
 function printCreateAppFields(details) {
   console.log('Create App fields:');
   console.log('');
-  console.log('  Name: CodexBridge');
+  console.log('  Name: GPT Codex Flow');
   console.log('  Description: Local coding workspace bridge for ChatGPT.');
   console.log('  Connection: Server URL');
   console.log(`  Server URL: ${details.serverUrl}`);
@@ -1590,7 +1590,7 @@ function printConnectorBlock(endpoint, token, options = {}) {
   const mode = options.mode ?? 'agent';
   const modeTitle = mode === 'agent' ? 'Agent' : mode === 'handoff' ? 'Handoff' : 'Pro planning';
   console.log('');
-  console.log(paint('bold', 'CodexBridge ready'));
+  console.log(paint('bold', 'GPT Codex Flow ready'));
   if (options.root) console.log(`  Workspace  ${options.root}`);
   console.log(`  Mode       ${modeTitle}  tools=${options.toolMode ?? 'standard'}  write=${options.write ?? 'workspace'}  bash=${options.bash ?? 'safe'}`);
   console.log(`  Transcript bash=${options.bashTranscript ?? 'compact'}`);
@@ -1627,7 +1627,7 @@ function printControlHelp() {
   console.log('  p      print Create App fields');
   console.log('  m      print mode help');
   console.log('  h      show controls');
-  console.log('  q      stop CodexBridge');
+  console.log('  q      stop GPT Codex Flow');
   console.log('');
 }
 
@@ -1708,7 +1708,7 @@ async function runDoctor(argv) {
   }
 
   console.log('');
-  printBox('CodexBridge doctor', [
+  printBox('GPT Codex Flow doctor', [
     labelValue('Workspace', root),
     labelValue('Mode', `${mode}  tools=${toolMode}  write=${write}  bash=${bash}`),
     labelValue('Tunnel', tunnel),
@@ -1764,7 +1764,7 @@ async function ask(rl, question, fallback = '') {
 
 function printProfile(root, profile) {
   if (!profile.profilePath) {
-    printBox('CodexBridge settings', [
+    printBox('GPT Codex Flow settings', [
       labelValue('Workspace', root),
       'No saved settings for this workspace.',
       'Run codexbridge settings set to save Cloudflare Quick Tunnel settings.'
@@ -1772,7 +1772,7 @@ function printProfile(root, profile) {
     return;
   }
   const safe = sanitizedProfile(profile);
-  printBox('CodexBridge settings', [
+  printBox('GPT Codex Flow settings', [
     labelValue('Workspace', root),
     labelValue('Profile', profile.profilePath),
     labelValue('Tunnel', safe.tunnel ?? 'cloudflare'),
@@ -1788,13 +1788,13 @@ function printProfile(root, profile) {
 
 function printProfileList(profiles = listWorkspaceProfiles()) {
   if (!profiles.length) {
-    printBox('CodexBridge saved setups', [
+    printBox('GPT Codex Flow saved setups', [
       'No saved workspace settings found.',
       'Run codexbridge settings set to create one.'
     ]);
     return;
   }
-  printBox('CodexBridge saved setups', profiles.slice(0, 50).map((profile, index) => profileOneLine(profile, index + 1)));
+  printBox('GPT Codex Flow saved setups', profiles.slice(0, 50).map((profile, index) => profileOneLine(profile, index + 1)));
 }
 
 function saveSettingsFromArgs(root, args, profile) {
@@ -1988,7 +1988,7 @@ function runControlPanel(details) {
   return new Promise(() => {
     process.stdin.on('data', (key) => {
       if (key === '\u0003') {
-        console.log('\nStopping CodexBridge...');
+        console.log('\nStopping GPT Codex Flow...');
         cleanupChildren();
         process.exit(130);
       }
@@ -2009,7 +2009,7 @@ function runControlPanel(details) {
           console.log('\nNo local status page URL is available for this run.');
         } else {
           const opened = openUrl(details.localStatusUrl);
-          console.log(opened ? '\nOpened local CodexBridge setup/status page.' : `\nCould not open automatically. Open this URL:\n${details.localStatusUrl}`);
+          console.log(opened ? '\nOpened local GPT Codex Flow setup/status page.' : `\nCould not open automatically. Open this URL:\n${details.localStatusUrl}`);
         }
         writeControlPrompt();
       } else if (normalized === 'p') {
@@ -2025,7 +2025,7 @@ function runControlPanel(details) {
         printControlHelp();
         writeControlPrompt();
       } else if (normalized === 'q') {
-        console.log('\nStopping CodexBridge...');
+        console.log('\nStopping GPT Codex Flow...');
         cleanupChildren();
         process.exit(0);
       }
@@ -2154,7 +2154,7 @@ async function main() {
 
   await assertPortAvailable(host, port);
 
-  printBox('CodexBridge start', [
+  printBox('GPT Codex Flow start', [
     labelValue('Workspace', root),
     labelValue('Mode', `${mode}  tools=${toolMode}  write=${write}  bash=${bash}`),
     labelValue('Bash transcript', bashTranscript),

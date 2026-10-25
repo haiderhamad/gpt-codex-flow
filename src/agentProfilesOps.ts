@@ -51,7 +51,7 @@ function roots(workspace: Workspace, includeGlobal: boolean) {
   return includeGlobal ? [...local, ...global] : local;
 }
 
-async function findMarkdown(root: string, depth: number, files: string[], cap: number): Promise<void> {
+async function findProfiles(root: string, depth: number, files: string[], cap: number): Promise<void> {
   if (depth < 0 || files.length >= cap) return;
   let entries: fs.Dirent[];
   try { entries = await fsp.readdir(root, { withFileTypes: true }); } catch { return; }
@@ -61,8 +61,8 @@ async function findMarkdown(root: string, depth: number, files: string[], cap: n
     if (entry.isSymbolicLink() || entry.name === ".git" || entry.name === "node_modules") continue;
     const candidate = path.join(root, entry.name);
     if (entry.isDirectory()) {
-      await findMarkdown(candidate, depth - 1, files, cap);
-    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md") &&
+      await findProfiles(candidate, depth - 1, files, cap);
+    } else if (entry.isFile() && (entry.name.toLowerCase().endsWith(".md") || entry.name.toLowerCase().endsWith(".toml")) &&
       !EXCLUDED.has(entry.name.toLowerCase())) {
       files.push(candidate);
     }
@@ -107,6 +107,13 @@ function metadata(text: string, key: "name" | "description", cap: number): strin
   return raw?.replace(/[\u0000-\u001f\u007f]/gu, " ").slice(0, cap) || undefined;
 }
 
+function tomlMetadata(text: string, key: "name" | "description", cap: number): string | undefined {
+  const preamble = text.split(/^\s*\[/mu, 1)[0];
+  const line = preamble.split(/\r?\n/u).find((entry) => new RegExp("^\\s*" + key + "\\s*=").test(entry));
+  const raw = line?.match(/=\s*["']([^"'\r\n]*)["']\s*(?:#.*)?$/u)?.[1];
+  return raw?.replace(/[\u0000-\u001f\u007f]/gu, " ").slice(0, cap) || undefined;
+}
+
 function publicProfile(record: RecordEntry): AgentProfile {
   return {
     kind: "agent_profile", name: record.name, description: record.description,
@@ -119,13 +126,14 @@ async function discover(workspace: Workspace, includeGlobal: boolean, cap: numbe
   for (const location of roots(workspace, includeGlobal)) {
     if (results.length >= cap) break;
     const candidates: string[] = [];
-    await findMarkdown(location.root, 2, candidates, cap - results.length);
+    await findProfiles(location.root, 2, candidates, cap - results.length);
     for (const file of candidates) {
       try {
         const sample = await readApproved(file, location.root, location.parent, 12_000);
         const stem = path.basename(file, path.extname(file)).slice(0, 120);
-        const name = metadata(sample.text, "name", 120) ?? stem;
-        const description = metadata(sample.text, "description", 300);
+        const parse = path.extname(file).toLowerCase() === ".toml" ? tomlMetadata : metadata;
+        const name = parse(sample.text, "name", 120) ?? stem;
+        const description = parse(sample.text, "description", 300);
         const prefix = location.source === "workspace" ? "$WORKSPACE/" : "~/";
         const relative = path.relative(location.parent, file).split(path.sep).join("/");
         results.push({ kind: "agent_profile", name, description, source: location.source,

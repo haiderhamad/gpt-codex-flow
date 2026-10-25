@@ -16,6 +16,7 @@ try {
   }
   await fs.writeFile(path.join(profiles, 'AGENTS.md'), 'Instructions file, not a profile.');
   await fs.writeFile(path.join(profiles, 'README.md'), 'Not a profile.');
+  await fs.writeFile(path.join(profiles, 'release.toml'), 'name = "release"\ndescription = "Release validation"\nmodel = "gpt"\n');
   const outside = path.join(root, 'secret-agent.md');
   await fs.writeFile(outside, '---\nname: forbidden\n---\n');
   await fs.symlink(outside, path.join(profiles, 'escape.md'));
@@ -31,10 +32,16 @@ try {
   assert.equal(page2.profiles.length, 1);
   assert.equal(page2.next_offset, null);
   assert.notEqual(page1.profiles[0].name, page2.profiles[0].name);
-  assert.equal((await searchAgentProfiles(workspace, { includeGlobal: false })).total_matches, 3);
+  assert.equal((await searchAgentProfiles(workspace, { includeGlobal: false })).total_matches, 4);
   assert.equal((await searchAgentProfiles(workspace, { query: 'forbidden', includeGlobal: false })).total_matches, 0);
   assert.equal((await searchAgentProfiles(workspace, { query: 'nonexistent', includeGlobal: false })).total_matches, 0);
   await assert.rejects(searchAgentProfiles(workspace, { query: 'x'.repeat(201), includeGlobal: false }), /200/);
+  const releaseProfile = await searchAgentProfiles(workspace, { query: 'release', includeGlobal: false });
+  assert.equal(releaseProfile.total_matches, 1);
+  assert.equal(releaseProfile.profiles[0].path, '$WORKSPACE/.codex/agents/release.toml');
+  const releaseInstructions = await loadAgentProfile(workspace, { name: 'release', includeGlobal: false });
+  assert.match(releaseInstructions.text, /Release validation/);
+  assert.equal(releaseInstructions.profile.executable, false);
   const capped = await searchAgentProfiles(workspace, { includeGlobal: false, maxProfiles: 1 });
   assert.equal(capped.inspected, 1);
   assert.equal(capped.scan_limit_reached, true);

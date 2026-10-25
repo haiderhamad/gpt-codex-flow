@@ -39,7 +39,7 @@ if (result.status !== 0) {
 }
 
 const output = `${result.stdout}\n${result.stderr}`;
-for (const expected of ['CodexBridge doctor', 'Node', 'Build artifacts', 'Local port', 'Ready']) {
+for (const expected of ['GPT Codex Flow doctor', 'Node', 'Build artifacts', 'Local port', 'Ready']) {
   if (!output.includes(expected)) {
     throw new Error(`doctor output missing ${expected}\n${output}`);
   }

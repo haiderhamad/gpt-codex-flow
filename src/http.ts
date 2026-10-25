@@ -220,12 +220,15 @@ async function main(): Promise<void> {
     const bearer = req.headers.authorization?.startsWith("Bearer ")
       ? req.headers.authorization.slice("Bearer ".length)
       : undefined;
-    const queryToken = typeof req.query.codexbridge_token === "string"
-      ? req.query.codexbridge_token
-      : typeof req.query.token === "string"
-          ? req.query.token
-          : undefined;
-    const queryCredentialSupplied = Object.prototype.hasOwnProperty.call(req.query, "codexbridge_token") ||
+    const queryToken = typeof req.query.gcf_token === "string"
+      ? req.query.gcf_token
+      : typeof req.query.codexbridge_token === "string"
+          ? req.query.codexbridge_token
+          : typeof req.query.token === "string"
+              ? req.query.token
+              : undefined;
+    const queryCredentialSupplied = Object.prototype.hasOwnProperty.call(req.query, "gcf_token") ||
+      Object.prototype.hasOwnProperty.call(req.query, "codexbridge_token") ||
       Object.prototype.hasOwnProperty.call(req.query, "token");
     const authorized = config.httpAuthMode === "header-only"
       ? !queryCredentialSupplied && tokenMatches(bearer)
@@ -289,7 +292,7 @@ async function main(): Promise<void> {
   app.get("/healthz", (_req, res) => {
     res.json({
       ok: true,
-      name: "CodexBridge",
+      name: "GPT Codex Flow",
       defaultRoot: config.defaultRoot,
       allowedRoots: config.allowedRoots,
       bashMode: config.bashMode,

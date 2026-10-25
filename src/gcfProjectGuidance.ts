@@ -2,15 +2,15 @@
 import path from 'node:path';
 export function chatgptProjectInstructions(root:string):string {
   const name=path.basename(root);
-  const text=`This ChatGPT Project is dedicated to the local repository "${name}" at "${root}".
+  const text=`This ChatGPT Project covers the approved repository "${name}" at "${root}".
 
-At the start of repository work, use the authorized GPT Codex Flow MCP connection. List projects and select the exact matching root/ID. Never silently switch projects.
+At the start of a task, connect through GPT Codex Flow MCP, list projects and select this exact approved root/ID. Never guess or switch roots silently.
 
-Before editing, read applicable repository AGENTS.md / AGENTS.override.md (including nested instructions for files you touch) and available global Codex AGENTS.md if securely exposed. Discover only task-relevant approved Skills (SKILL.md) and agent profiles; loading a profile does not run an agent.
+Before coding, read applicable AGENTS.md (including nested rules), README.md and docs/PROJECT_HISTORY.md if present. Read shared_project_state/project_summary for recorded work, but verify source, Git and tests.
 
-Read shared_project_state and project_summary to resume the existing task/handoff. Read the short docs/PROJECT_HISTORY.md or other existing project history and README as needed. Treat Git, source and test results as proof; saved plans are not proof of completion.
+Discover task-relevant Agent profiles in .codex/agents/*.toml or *.md and Skills in .codex/skills/ or .agents/skills/ (or approved global locations). Use search_agent_profiles/search_skills and load only selected profile instructions/SKILL.md with approved tools. Repository rules take precedence. Never load the entire catalog, execute bundled scripts by default or assume a loaded profile runs an agent. Delegate only if supported and authorized.
 
-After verified meaningful decisions/milestones, update the existing project history concisely if authorized. Do not record transcripts/secrets. Preserve unrelated changes. If MCP, rules, history or permissions are unavailable, say so. Never commit, push, deploy or elevate privileges without owner approval.`;
+Report which profiles and Skills were consulted, and which were inaccessible; distinguish consulted profiles from executed agents. Preserve unrelated changes, never store secrets, and do not push, deploy or elevate access without owner approval.`;
   if(text.length>1500) throw Error('Project instructions exceeded the 1,500-character target.');
   return text;
 }

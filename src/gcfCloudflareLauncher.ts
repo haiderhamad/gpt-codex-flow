@@ -127,7 +127,7 @@ export function createCloudflareLauncher(sourceRoot:string,options:{cloudflaredP
         });
         if(epoch!==generation)throw Error('Connection stopped.');
         const url=new URL(publicHost+'/mcp');
-        url.searchParams.set('codexbridge_token',token);
+        url.searchParams.set('gcf_token',token);
         state={state:'tunnel_ready',project,projects:approved,access,message:'Cloudflare ready for '+approved.length+' project(s). Add the private URL in ChatGPT; client not verified yet.',serverUrl:url.toString()};
         return {...state};
       }catch(error){

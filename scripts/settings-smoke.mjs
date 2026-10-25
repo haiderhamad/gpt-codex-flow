@@ -44,7 +44,7 @@ const home = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-home-
 const env = { ...process.env, CODEXBRIDGE_HOME: home };
 
 const help = run(['--help'], env);
-if (!help.includes('CodexBridge easy launcher') || !help.includes('codexbridge start')) {
+if (!help.includes('GPT Codex Flow connection and compatibility helpers') || !help.includes('codexbridge start')) {
   throw new Error(`help did not prefer CodexBridge naming:\n${help}`);
 }
 for (const obsolete of ['ngrok', 'cloudflare-named']) {

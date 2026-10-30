@@ -5,11 +5,11 @@ import path from 'node:path';
 import process from 'node:process';
 
 function usage() {
-  console.log(`CodexBridge context bundle
+  console.log(`Gcf context bundle
 
 Usage:
-  codexbridge pro-bundle --root /path/to/repo --copy
-  codexbridge pro-bundle --root /path/to/repo --path src/App.tsx --glob "src/**/*.ts"
+  gcf pro-bundle --root /path/to/repo --copy
+  gcf pro-bundle --root /path/to/repo --path src/App.tsx --glob "src/**/*.ts"
 
 Options:
   --root <dir>              Workspace root. Default: current directory.

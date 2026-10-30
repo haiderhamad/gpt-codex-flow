@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import type { CodexBridgeConfig } from "./config.js";
+import type { GcfConfig } from "./config.js";
 import type { Workspace } from "./guard.js";
 import { PathGuard } from "./guard.js";
 import { redactSensitiveText, redactStructured } from "./redact.js";
@@ -38,12 +38,12 @@ export function newOperationId(): string {
   return `op_${randomUUID()}`;
 }
 
-function journalPath(config: CodexBridgeConfig): string {
+function journalPath(config: GcfConfig): string {
   return `${config.contextDir}/operation-journal.jsonl`;
 }
 
 export async function appendJournalEvent(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   input: JournalEventInput
@@ -74,7 +74,7 @@ export async function appendJournalEvent(
 }
 
 export async function readJournalEvents(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   options: { maxEvents?: number; event?: string } = {}

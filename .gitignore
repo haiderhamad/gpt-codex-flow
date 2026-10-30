@@ -16,6 +16,10 @@ SOCIAL_POSTS.md
 LAUNCH_COPY.md
 
 # Owner-local runtime and generated verification artifacts
-.codexbridge/
+.gcf/
+gcf-lead-preferences.json
+gcf-codex-execution-preferences.json
+# Legacy private state: never publish
+.co*bridge/
 coverage/
 *.tsbuildinfo

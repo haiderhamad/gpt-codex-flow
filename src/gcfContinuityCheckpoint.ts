@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
-import type {CodexBridgeConfig} from './config.js';
+import type {GcfConfig} from './config.js';
 import type {Workspace} from './guard.js';
 import {PathGuard} from './guard.js';
 import {assertInboxGitPrivacy} from './inboxGitPrivacy.js';
@@ -14,7 +14,7 @@ import type {JournalEvent} from './journal.js';
  */
 const events=new Set(['write','edit','apply_change_set','task_verify','bash',
   'request_transfer','accept_transfer','cancel_transfer','ssh_exec']);
-export function persistObservedCheckpoint(config:CodexBridgeConfig,guard:PathGuard,workspace:Workspace,event:JournalEvent):boolean {
+export function persistObservedCheckpoint(config:GcfConfig,guard:PathGuard,workspace:Workspace,event:JournalEvent):boolean {
   if(config.writeMode==='off'||event.status!=='ok'||!events.has(event.event))return false;
   if(!config.allowedRoots.some(root=>root===workspace.root))return false;
   // GCF metadata must remain private from normal Git commits; never fix ignore rules automatically.

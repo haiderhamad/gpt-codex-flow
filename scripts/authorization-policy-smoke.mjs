@@ -21,7 +21,7 @@ check({ toolName: 'accept_transfer', writeMode: 'off',
   principal: makeActor(['handoff:write']) }, 'approval-not-implemented');
 check({ toolName: 'bash', writeMode: 'workspace',
   principal: makeActor(['execution:run']) }, 'execution-unconfined');
-check({ toolName: 'codexbridge_self_test', writeMode: 'workspace',
+check({ toolName: 'gcf_self_test', writeMode: 'workspace',
   principal: makeActor(['workspace:read', 'handoff:write', 'execution:run']) },
   'mixed-diagnostic-unconfined');
 

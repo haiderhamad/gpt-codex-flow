@@ -137,7 +137,7 @@ export async function sourceCandidatePreview(){
 }
 // Never writes into the checkout or its Git index; selected sources go to a
 // randomly named temporary directory, with dependency install scripts disabled.
-export async function verifySelectedCandidate(){
+export async function verifySelectedCandidate({smokeOnly=false}={}){
   const preview=await sourceCandidatePreview();
   if(preview.status!=='READY_FOR_OWNER_SELECTION_REVIEW'){
     return {status:'CANDIDATE_PREFLIGHT_BLOCKED',preflight_status:preview.status,
@@ -206,10 +206,16 @@ export async function verifySelectedCandidate(){
     const checks=[
       {label:'npm ci isolated dependency install',args:['ci','--ignore-scripts','--no-audit','--no-fund','--prefer-offline'],timeout:85000},
       {label:'TypeScript build',args:['run','build'],timeout:25000},
-      {label:'Full GCF core suite',args:['run','test:gcf-core'],timeout:85000},
-      {label:'Landing regression',args:['run','test:gcf-landing'],timeout:18000},
-      {label:'Admin UI regression',args:['run','test:ui'],timeout:18000},
-      {label:'Public PNG screenshot integrity and metadata',args:['run','test:gcf-public-screenshots'],timeout:18000}
+      ...(smokeOnly ? [
+        {label:'Installed-source launcher and MCP',args:['run','test:gcf-launcher'],timeout:30000},
+        {label:'Core task resume without Notion',args:['run','test:gcf-cross-client-resume'],timeout:30000},
+        {label:'Release manifest and source closure',args:['run','test:gcf-release-integrity'],timeout:18000}
+      ] : [
+        {label:'Full GCF core suite',args:['run','test:gcf-core'],timeout:145000},
+        {label:'Landing regression',args:['run','test:gcf-landing'],timeout:18000},
+        {label:'Admin UI regression',args:['run','test:ui'],timeout:18000},
+        {label:'Public PNG screenshot integrity and metadata',args:['run','test:gcf-public-screenshots'],timeout:18000}
+      ])
     ];
     for(const check of checks){
       const result=spawnSync('npm',check.args,{cwd:stage,env:environment,
@@ -226,7 +232,7 @@ export async function verifySelectedCandidate(){
       if(check.args[0]==='ci')report.independent_dependency_install=true;
     }
     if(report.checks.length===checks.length && report.checks.every(x=>x.passed))
-      report.status='ISOLATED_SELECTED_SOURCE_BUILD_AND_TEST_PASS';
+      report.status=smokeOnly?'ISOLATED_SELECTED_SOURCE_SMOKE_PASS':'ISOLATED_SELECTED_SOURCE_BUILD_AND_TEST_PASS';
     report.source_unchanged=calculateDigest()===preview.selected_sha256;
     if(!report.source_unchanged)report.status='SOURCE_MUTATED_DURING_ACCEPTANCE';
   }catch(error){report.status='ISOLATED_SNAPSHOT_ABORTED';report.error=error.message;}
@@ -238,14 +244,15 @@ export async function verifySelectedCandidate(){
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const args=process.argv.slice(2);
-  if(args.length>1||args.length===1&&args[0]!=='--verify'){
-    process.stderr.write('Usage: node scripts/gcf-source-candidate-preview.mjs [--verify]\n');
+  if(args.length>1||args.length===1&&!['--verify','--smoke'].includes(args[0])){
+    process.stderr.write('Usage: node scripts/gcf-source-candidate-preview.mjs [--verify|--smoke]\n');
     process.exitCode=2;
   }else{
-    const action=args.length?verifySelectedCandidate():sourceCandidatePreview();
+    const smokeOnly=args[0]==='--smoke';
+    const action=args.length?verifySelectedCandidate({smokeOnly}):sourceCandidatePreview();
     action.then(r=>{
       process.stdout.write(JSON.stringify(r,null,2)+'\n');
-      if(args.length&&r.status!=='ISOLATED_SELECTED_SOURCE_BUILD_AND_TEST_PASS')process.exitCode=1;
+      if(args.length&&r.status!==(smokeOnly?'ISOLATED_SELECTED_SOURCE_SMOKE_PASS':'ISOLATED_SELECTED_SOURCE_BUILD_AND_TEST_PASS'))process.exitCode=1;
     }).catch(e=>{process.stderr.write('CANDIDATE CHECK FAILED: '+e.message+'\n');process.exitCode=2;});
   }
 }

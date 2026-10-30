@@ -5,29 +5,29 @@ import os from 'node:os';
 import path from 'node:path';
 
 function run(args, env) {
-  const result = spawnSync(process.execPath, ['scripts/codexbridge.mjs', ...args], {
+  const result = spawnSync(process.execPath, ['scripts/gcf.mjs', ...args], {
     cwd: path.resolve('.'),
     env,
     encoding: 'utf8'
   });
   if (result.status !== 0) {
-    throw new Error(`codexbridge ${args.join(' ')} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+    throw new Error(`gcf ${args.join(' ')} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
   }
   return `${result.stdout}\n${result.stderr}`;
 }
 
 function runFail(args, env, pattern) {
-  const result = spawnSync(process.execPath, ['scripts/codexbridge.mjs', ...args], {
+  const result = spawnSync(process.execPath, ['scripts/gcf.mjs', ...args], {
     cwd: path.resolve('.'),
     env,
     encoding: 'utf8'
   });
   if (result.status === 0) {
-    throw new Error(`codexbridge ${args.join(' ')} unexpectedly succeeded\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+    throw new Error(`gcf ${args.join(' ')} unexpectedly succeeded\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
   }
   const output = `${result.stdout}\n${result.stderr}`;
   if (pattern && !pattern.test(output)) {
-    throw new Error(`codexbridge ${args.join(' ')} failed for the wrong reason\n${output}`);
+    throw new Error(`gcf ${args.join(' ')} failed for the wrong reason\n${output}`);
   }
   return output;
 }
@@ -38,14 +38,14 @@ async function readProfile(root, home) {
   return JSON.parse(await fs.readFile(path.join(home, 'profiles', `${id}.json`), 'utf8'));
 }
 
-const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-root-'));
-const reuseRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-reuse-'));
-const home = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-settings-home-'));
-const env = { ...process.env, CODEXBRIDGE_HOME: home };
+const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-settings-root-'));
+const reuseRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-settings-reuse-'));
+const home = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-settings-home-'));
+const env = { ...process.env, GCF_HOME: home };
 
 const help = run(['--help'], env);
-if (!help.includes('GPT Codex Flow connection and compatibility helpers') || !help.includes('codexbridge start')) {
-  throw new Error(`help did not prefer CodexBridge naming:\n${help}`);
+if (!help.includes('GPT Codex Flow connection and compatibility helpers') || !help.includes('gcf start')) {
+  throw new Error(`help did not prefer Gcf naming:\n${help}`);
 }
 for (const obsolete of ['ngrok', 'cloudflare-named']) {
   runFail(['settings', 'set', '--root', root, '--tunnel', obsolete], env, /Only Cloudflare Quick Tunnel/);
@@ -81,9 +81,9 @@ const saved = run([
   '--bash-transcript',
   'full',
   '--widget-domain',
-  'https://widgets.codexbridge.test',
+  'https://widgets.gcf.test',
   '--token',
-  'codexbridge-settings-token'
+  'gcf-settings-token'
 ], env);
 if (!saved.includes('Saved workspace settings')) {
   throw new Error(`expected settings save output, got:\n${saved}`);
@@ -95,11 +95,11 @@ for (const expected of ['Tunnel', 'cloudflare', '19087', 'Bash transcript', 'ful
     throw new Error(`settings show missing ${expected}\n${shown}`);
   }
 }
-if (shown.includes('codexbridge-settings-token')) {
+if (shown.includes('gcf-settings-token')) {
   throw new Error(`settings show leaked token\n${shown}`);
 }
 const profile = await readProfile(root, home);
-if (profile.toolMode !== 'full' || profile.bashTranscript !== 'full' || profile.widgetDomain !== 'https://widgets.codexbridge.test') {
+if (profile.toolMode !== 'full' || profile.bashTranscript !== 'full' || profile.widgetDomain !== 'https://widgets.gcf.test') {
   throw new Error(`settings profile did not persist tool/widget options: ${JSON.stringify(profile)}`);
 }
 

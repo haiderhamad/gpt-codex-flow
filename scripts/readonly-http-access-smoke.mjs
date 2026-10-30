@@ -22,7 +22,7 @@ for (const tool of ['read', 'tree', 'search', 'git_status', 'show_changes', 'rea
   assert.equal(isReadOnlyMcpPostAllowed(rpc('tools/call', { name: tool, arguments: {} })), true, tool);
 }
 for (const tool of ['write', 'edit', 'apply_change_set', 'bash', 'task_verify',
-  'request_transfer', 'task_plan', 'codexbridge_self_test', 'open_workspace']) {
+  'request_transfer', 'task_plan', 'gcf_self_test', 'open_workspace']) {
   assert.equal(isReadOnlyMcpPostAllowed(rpc('tools/call', { name: tool })), false, tool);
 }
 for (const malformed of [null, [], [rpc('tools/list')], {}, rpc('resources/read'),

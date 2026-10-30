@@ -38,10 +38,10 @@ async function connect(roots,writeMode='workspace') {
       '--tool-mode','standard','--write',writeMode,'--bash','off'],
     cwd:process.cwd(),
     env:{PATH:process.env.PATH??'/usr/bin:/bin',HOME:temp,TMPDIR:temp,
-      CODEXBRIDGE_ROOT:defaultRoot,CODEXBRIDGE_ALLOWED_ROOTS:'',
-      CODEBASE_BRIDGE_ALLOWED_ROOTS:'',CODEXBRIDGE_ALLOW_HOME:'0',
-      CODEXBRIDGE_TOOL_MODE:'standard',CODEXBRIDGE_WRITE_MODE:writeMode,
-      CODEXBRIDGE_BASH_MODE:'off',CODEXBRIDGE_PROJECT_ALIAS_FILE:aliasRegistry,
+      GCF_ROOT:defaultRoot,GCF_ALLOWED_ROOTS:'',
+      CODEBASE_BRIDGE_ALLOWED_ROOTS:'',GCF_ALLOW_HOME:'0',
+      GCF_TOOL_MODE:'standard',GCF_WRITE_MODE:writeMode,
+      GCF_BASH_MODE:'off',GCF_PROJECT_ALIAS_FILE:aliasRegistry,
       NO_COLOR:'1'}
   }));
   clients.push(client);

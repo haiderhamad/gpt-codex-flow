@@ -17,7 +17,7 @@ async function runCase(mode) {
       command: process.execPath,
       args: ['dist/stdio.js', '--root', root, '--allow-root', root, '--tool-mode', 'standard', '--write', mode, '--bash', 'off'],
       cwd: process.cwd(),
-      env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root, CODEXBRIDGE_WRITE_MODE: mode }
+      env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root, GCF_WRITE_MODE: mode }
     }));
     const call = (name, args) => client.callTool({ name, arguments: args });
     const source = { path: 'source.txt', old_text: 'before', new_text: 'after', expected_replacements: 1 };

@@ -20,6 +20,18 @@ assert.match(chatgptProjectInstructions(projectA),/Project A/);
 assert.ok(!chatgptProjectInstructions(projectA).includes('Project B'));
 assert.match(chatgptProjectInstructions(projectB),/Project B/);
 assert.ok(chatgptProjectInstructions(projectB).length<=1500);
+const instructions=chatgptProjectInstructions(projectA);
+assert.match(instructions,/read AGENTS\.md and applicable nested instructions/);
+assert.match(instructions,/If AGENTS\.md points to NOTION_MEMORY\.md, read it/);
+assert.match(instructions,/check whether NOTION_MEMORY\.md exists even without a pointer/);
+assert.ok(instructions.indexOf('read AGENTS.md')<instructions.indexOf('NOTION_MEMORY.md'),'AGENTS must be read before its Notion pointer');
+assert.match(instructions,/official Notion plugin\/MCP/);
+assert.match(instructions,/NOTION_SYNC_PENDING/);
+assert.match(instructions,/shared_project_state, task_resume/);
+assert.match(instructions,/never gate them on Notion/);
+assert.match(instructions,/Notion disabled: skip it silently/);
+assert.match(instructions,/report NOTION_SYNC_PENDING but continue GCF normally/);
+assert.match(instructions,/Never mirror handoffs/);
 fs.mkdirSync(ordinary);fs.mkdirSync(git);fs.mkdirSync(path.join(git,'.git'));fs.writeFileSync(path.join(ordinary,'hello.txt'),'safe folder\n');
 const manifest=path.join(root,'settings','projects.json');
 let nextPick={cancelled:false,path:ordinary};let approve=true;let approvals=0;
@@ -58,6 +70,9 @@ try {
      'https://help.openai.com/en/articles/20001495-managing-app-permissions-in-chatgpt']) {
     assert.ok(html.includes(expected),'Missing Control Center UX element: '+expected);
   }
+  assert.match(html,/id="notion-confirm"/);
+  assert.match(inlineJs,/Enable Notion Memory/);
+  assert.match(inlineJs,/\/owner\/project-notion-memory/);
   const h={cookie,'x-gcf-csrf':csrf};
   assert.equal((await request('/owner/pick-folder','POST',{}, {cookie})).status,403);
   assert.equal((await request('/owner/projects','POST',{action:'add',path:ordinary},h)).status,400);
@@ -84,6 +99,38 @@ try {
   nextPick={cancelled:false,path:git};ticket=(await (await request('/owner/pick-folder','POST',{},h)).json()).ticket;
   assert.equal((await request('/owner/projects','POST',{action:'add',ticket,access:'read'},h)).status,200);
   assert.deepEqual(readProjectRootsManifest(manifest),[ordinary,git]);
+  // A project with existing development work can opt into Notion after GCF approval.
+  const originalOrdinary=fs.readFileSync(path.join(ordinary,'hello.txt'));
+  const existingAgents='# Existing agent rules\\nDo not overwrite me.\\n';
+  fs.writeFileSync(path.join(ordinary,'AGENTS.md'),existingAgents);
+  assert.equal((await request('/owner/project-notion-memory','POST',{project:ordinary})).status,401);
+  assert.equal((await request('/owner/project-notion-memory','POST',{project:ordinary},{cookie})).status,403);
+  assert.equal((await request('/owner/project-notion-memory','POST',{project:projectA},h)).status,400);
+  assert.equal((await request('/owner/project-notion-memory','POST',{project:ordinary,other:true},h)).status,400);
+  const unsafeMarker=path.join(git,'NOTION_MEMORY.md');
+  fs.writeFileSync(unsafeMarker,'unrecognized existing owner instructions\\n');
+  assert.equal((await request('/owner/project-notion-memory','POST',{project:git},h)).status,400);
+  assert.equal(fs.readFileSync(unsafeMarker,'utf8'),'unrecognized existing owner instructions\\n');
+  fs.unlinkSync(unsafeMarker);
+  approve=false;
+  let laterNotion=await (await request('/owner/project-notion-memory','POST',{project:ordinary},h)).json();
+  assert.equal(laterNotion.cancelled,true);
+  assert.equal(fs.existsSync(path.join(ordinary,'NOTION_MEMORY.md')),false);
+  approve=true;
+  laterNotion=await (await request('/owner/project-notion-memory','POST',{project:ordinary},h)).json();
+  assert.equal(laterNotion.state,'created');
+  assert.equal(laterNotion.remoteSyncVerified,false,'local marker is not a remote Notion sync');
+  assert.equal(laterNotion.notionMemory.enabled,true);
+  assert.match(laterNotion.pointer,/NOTION_MEMORY.md/);
+  assert.deepEqual(fs.readFileSync(path.join(ordinary,'hello.txt')),originalOrdinary);
+  assert.equal(fs.readFileSync(path.join(ordinary,'AGENTS.md'),'utf8'),existingAgents);
+  const markerBytes=fs.readFileSync(path.join(ordinary,'NOTION_MEMORY.md'));
+  laterNotion=await (await request('/owner/project-notion-memory','POST',{project:ordinary},h)).json();
+  assert.equal(laterNotion.state,'existing');
+  assert.deepEqual(fs.readFileSync(path.join(ordinary,'NOTION_MEMORY.md')),markerBytes);
+  assert.deepEqual(readProjectRootsManifest(manifest),[ordinary,git], 'Notion setup cannot change project access');
+  const laterStatus=await (await request('/owner/status','GET',undefined,{cookie})).json();
+  assert.equal(laterStatus.projects.find(p=>p.path===ordinary)?.notionMemory?.enabled,true,'already-approved folder reports opt-in');
   assert.equal((await request('/owner/project-instructions','GET',undefined,{cookie,'x-gcf-project':projectA})).status,400,'unapproved project must not expose instructions');
   assert.equal((await request('/owner/project-instructions','GET',undefined,{cookie,'x-gcf-project':ordinary})).status,200);
   nextPick={cancelled:false,path:projectA};picked=await (await request('/owner/pick-folder','POST',{},h)).json();assert.equal(picked.newProject,true);assert.equal(picked.history,null);
@@ -93,12 +140,30 @@ try {
   assert.equal(projectHistoryPath(projectA),'docs/PROJECT_HISTORY.md');
   let tpl=await (await request('/owner/project-instructions','GET',undefined,{cookie,'x-gcf-project':projectA})).json();
   assert.match(tpl.template,/Project A/);assert.ok(tpl.template.length<=1500);
+  assert.match(tpl.optionalAgentsBlock,/GCF NOTION MEMORY START/);
+  assert.match(tpl.optionalNotionPointerBlock,/GCF NOTION MEMORY POINTER START/);
+  assert.ok(tpl.optionalNotionPointerBlock.length<tpl.optionalAgentsBlock.length/2);
+  assert.equal(tpl.notionMemory.enabled,false);
+  // Emulate explicit user paste; only AGENTS.md, never a generated marker.
+  fs.writeFileSync(path.join(projectA,'AGENTS.md'),'# Keep existing rules\\n\\n'+tpl.optionalAgentsBlock);
+  tpl=await (await request('/owner/project-instructions','GET',undefined,{cookie,'x-gcf-project':projectA})).json();
+  assert.equal(tpl.notionMemory.enabled,true);assert.equal(tpl.notionMemory.source,'agents');
+  assert.equal(fs.existsSync(path.join(projectA,'NOTION_MEMORY.md')),false);
+  const existingOwnerMemory=await (await request('/owner/project-notion-memory','POST',{project:projectA},h)).json();
+  assert.equal(existingOwnerMemory.state,'existing');
+  assert.equal(existingOwnerMemory.notionMemory.source,'agents');
+  assert.equal(existingOwnerMemory.pointer,null,'do not tell the owner to link an absent marker');
+  assert.equal(fs.existsSync(path.join(projectA,'NOTION_MEMORY.md')),false);
   const original=fs.readFileSync(path.join(projectA,'docs/PROJECT_HISTORY.md'),'utf8');
   nextPick={cancelled:false,path:projectB};picked=await (await request('/owner/pick-folder','POST',{},h)).json();
-  save=await request('/owner/projects','POST',{action:'add',ticket:picked.ticket,access:'read',initializeHistory:false},h);
+  save=await request('/owner/projects','POST',{action:'add',ticket:picked.ticket,access:'read',initializeHistory:false,initializeNotionMemory:true},h);
   assert.equal(save.status,200);assert.equal(fs.existsSync(path.join(projectB,'docs/PROJECT_HISTORY.md')),false);
+  assert.match(fs.readFileSync(path.join(projectB,'NOTION_MEMORY.md'),'utf8'),/Project B — Optional Notion Project Memory/);
   tpl=await (await request('/owner/project-instructions','GET',undefined,{cookie,'x-gcf-project':projectB})).json();
   assert.match(tpl.template,/Project B/);assert.ok(!tpl.template.includes('Project A'));
+  assert.equal(tpl.notionMemory.enabled,true);assert.equal(tpl.notionMemory.source,'file');
+  assert.match(tpl.optionalNotionPointerBlock,/NOTION_MEMORY.md/);
+  assert.equal(fs.existsSync(path.join(projectB,'AGENTS.md')),false,'never auto-create an AGENTS.md');
   assert.equal(fs.readFileSync(path.join(projectA,'docs/PROJECT_HISTORY.md'),'utf8'),original);
   assert.equal((await request('/owner/project-instructions','GET',undefined,{'x-gcf-project':projectA})).status,401);
   assert.equal((await request('/owner/projects','POST',{action:'remove',path:projectA},h)).status,200);
@@ -123,6 +188,12 @@ try {
   assert.ok(approvals>=4);
   const macPick=await nativeFolderDialog('pick',async (command,args)=>{assert.equal(command,'osascript');assert.ok(args.includes('POSIX path of (choose folder with prompt "Choose a folder for GPT Codex Flow")'));return {code:0,stdout:git+'\n',stderr:''};},'darwin');
   assert.deepEqual(macPick,{cancelled:false,path:git});
+  const macNotion=await nativeFolderDialog('enable-notion',async (command,args)=>{
+    assert.equal(command,'osascript');
+    assert.ok(args.some(arg=>arg.includes('optional Notion Memory instructions')));
+    return {code:0,stdout:'Allow',stderr:''};
+  },'darwin');
+  assert.equal(macNotion.cancelled,false,'native Notion confirmation must not authorize a folder/path change');
   assert.deepEqual(await nativeFolderDialog('pick',async()=>({code:1,stdout:'',stderr:'User canceled. (-128)'}),'darwin'),{cancelled:true});
   // Regression: Cloudflare's "Allow" is a confirmation, not a path to parse.
   const macCloudAllow=await nativeFolderDialog('connect-cloudflare',async (command,args)=>{

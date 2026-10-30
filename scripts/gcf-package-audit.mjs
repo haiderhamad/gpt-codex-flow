@@ -14,7 +14,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_ENTRIES=15000;
 const isSensitiveName=name=>
-  /(^|\/)(?:\.env(?:\.[^/]*)?|\.ai-bridge|\.git|\.codexbridge|id_rsa|id_ed25519)(?:\/|$)|\.(?:pem|key|p12|pfx|sqlite|db)$/i.test(name);
+  /(^|\/)(?:\.env(?:\.[^/]*)?|\.ai-bridge|\.git|\.gcf|id_rsa|id_ed25519)(?:\/|$)|\.(?:pem|key|p12|pfx|sqlite|db)$/i.test(name);
 
 export function auditGcfMetadata({pkg,readmeHeading,inventory,unreadable=[]}) {
   const reasons=[];
@@ -25,7 +25,10 @@ export function auditGcfMetadata({pkg,readmeHeading,inventory,unreadable=[]}) {
     add('UPSTREAM_PACKAGE_IDENTITY','npm package name does not identify a standalone GPT Codex Flow release; owner must decide fork/branding.');
   if (bins.gcf!=='scripts/gcf-cli.mjs')
     add('GCF_CLI_NOT_EXPORTED','Package bin map does not expose the GPT Codex Flow launcher as gcf.');
-  if (!/^(?:#\s*GPT Codex Flow(?:\s|$)|<h1(?:\s[^>]*)?>\s*GPT Codex Flow\s*<\/h1>)/i.test(readmeHeading??''))
+  // A centered logo may precede the actual H1. Inspect a bounded opening
+  // region instead of misclassifying a valid README banner as upstream branding.
+  const opening=(readmeHeading??'').split(/\r?\n/).slice(0,8);
+  if (!opening.some(line=>/^(?:#\s*GPT Codex Flow(?:\s|$)|<h1(?:\s[^>]*)?>\s*GPT Codex Flow\s*<\/h1>)/i.test(line.trim())))
     add('UPSTREAM_README','Root README does not document GPT Codex Flow as the primary shipped product.');
   if (!files.length)
     add('NO_EXPLICIT_PACKAGE_FILES','No explicit bounded npm files allowlist.');

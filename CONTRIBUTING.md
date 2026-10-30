@@ -25,6 +25,10 @@ See [README](README.md) for installation, new-machine setup and the supported Cl
 - Review `git diff --check` and the complete intended source/asset/test change list. Do not include personal paths, tokens, accounts, local task Inbox, `.env`, generated `dist/` or `node_modules/`.
 - For README, Landing and Control Center changes, verify relative links, responsive layouts and accessibility. Never claim capabilities that are only proposed, such as macOS autostart, general Multi-Queue or browser-native worker controls.
 
+## v1.0.0 release-candidate freeze (decided 2026-10-29)
+
+The local `v1.0.0` source is in **feature freeze**, not publicly released. Defer new product features, sweeping cleanup, dependency churn and cosmetic redesigns until a later version. Accept only narrowly scoped, evidence-backed fixes needed for safe v1.0.0 publication (security, broken install/runtime, essential documentation or regression). Record why the exception is release-blocking and rerun relevant tests, including the independent source-candidate suite when the source selection changes. A working-tree snapshot or successful test **does not** create an immutable release or authorize a Git operation. The author-email privacy decision, complete public-asset approval and real remote fresh-clone gate still require separate review; see [current status](docs/GCF_PROJECT_STATUS.md).
+
 ## Publishing and release boundaries
 
 Public Git source contains editable TypeScript, active runtime helpers and security/negative tests, `package.json` and `package-lock.json`, LICENSE/MIT attribution, repo instructions, focused documentation, GitHub workflows and static Landing assets. Generated `dist/`, credentials, local task state, machine paths and other ignored owner data must not be published. Verify the proposed source selection and all documentation/import links before a first commit; verify no secrets in the **exact commit and Git history**, then request explicit owner publication approval. Review sanitized screenshot pixels separately.
@@ -37,4 +41,4 @@ Follow [SECURITY.md](SECURITY.md) and use private GitHub vulnerability reporting
 
 ## Provenance
 
-GPT Codex Flow builds on [naplesblue/codexbridge](https://github.com/naplesblue/codexbridge). Keep the original MIT LICENSE and contributor notice.
+GPT Codex Flow builds on [naplesblue/codexbridge](https://github.com/naplesblue/codexbridge). Preserve the upstream MIT LICENSE and its original CodexPro contributors' copyright notice.

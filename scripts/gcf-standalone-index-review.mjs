@@ -44,7 +44,7 @@ async function safeBytes(rel){
   if(bytes.length!==st.size)throw Error('Source size changed during staging review.');
   return bytes;
 }
-const localPaths=/(?:^|\/)(?:\.ai-bridge|\.codexbridge|\.env(?:\.[^/]*)?|node_modules|dist|output|coverage|\.ssh|\.aws)(?:\/|$)/;
+const localPaths=/(?:^|\/)(?:\.ai-bridge|\.gcf|\.env(?:\.[^/]*)?|node_modules|dist|output|coverage|\.ssh|\.aws)(?:\/|$)/;
 const privatePatterns=[
   ['MACHINE_USER_HOME',/(?:\/Users\/|\/home\/)(?!example\/|user\/|alice\/|yourname\/)[A-Za-z0-9._-]{2,}\//g],
   ['PERSONAL_EMAIL',/\b[a-zA-Z0-9.+_-]+@(?:gmail\.com|yahoo\.[a-z.]+|icloud\.com|outlook\.com|hotmail\.com)\b/gi]

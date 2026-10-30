@@ -55,9 +55,9 @@ async function startHttp(port){
   httpChild=spawn(process.execPath,[cli,'start','--transport','http','--port',String(port),
     '--manifest',manifest,'--write','handoff','--bash','off'],{
       cwd:repo,shell:false,stdio:['ignore','ignore','pipe'],
-      env:{...process.env,CODEXBRIDGE_HTTP_TOKEN:token,CODEXBRIDGE_ROOT:excluded,
-        CODEXBRIDGE_ALLOWED_ROOTS:excluded,CODEBASE_BRIDGE_ALLOWED_ROOTS:excluded,
-        CODEXBRIDGE_ALLOW_HOME:'1'}
+      env:{...process.env,GCF_HTTP_TOKEN:token,GCF_ROOT:excluded,
+        GCF_ALLOWED_ROOTS:excluded,CODEBASE_BRIDGE_ALLOWED_ROOTS:excluded,
+        GCF_ALLOW_HOME:'1'}
     });
   httpChild.stderr.on('data',chunk=>{serverErrors=(serverErrors+String(chunk)).slice(-1600);});
   let healthy=false;
@@ -98,9 +98,9 @@ async function connectStdio(){
     command:process.execPath,args:[cli,'start','--transport','stdio','--manifest',manifest,
       '--write','handoff','--bash','off'],
     cwd:repo,
-    env:{...process.env,CODEXBRIDGE_ROOT:excluded,
-      CODEXBRIDGE_ALLOWED_ROOTS:excluded,CODEBASE_BRIDGE_ALLOWED_ROOTS:excluded,
-      CODEXBRIDGE_ALLOW_HOME:'1'}
+    env:{...process.env,GCF_ROOT:excluded,
+      GCF_ALLOWED_ROOTS:excluded,CODEBASE_BRIDGE_ALLOWED_ROOTS:excluded,
+      GCF_ALLOW_HOME:'1'}
   }));
   clients.push(client);
   return client;

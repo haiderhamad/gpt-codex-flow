@@ -37,8 +37,8 @@ async function connect(root, role) {
     cwd: process.cwd(),
     env: {
       PATH:process.env.PATH ?? '/usr/bin:/bin', HOME:temp, TMPDIR:temp,
-      CODEXBRIDGE_ROOT:root, CODEXBRIDGE_ALLOWED_ROOTS:root,
-      CODEXBRIDGE_BASH_MODE:'off', CODEXBRIDGE_WRITE_MODE:'workspace',
+      GCF_ROOT:root, GCF_ALLOWED_ROOTS:root,
+      GCF_BASH_MODE:'off', GCF_WRITE_MODE:'workspace',
       NO_COLOR:'1'
     }
   }));

@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import type { CodexBridgeConfig } from "./config.js";
+import type { GcfConfig } from "./config.js";
 import type { Workspace } from "./guard.js";
-import { CodexBridgeError, PathGuard } from "./guard.js";
+import { GcfError, PathGuard } from "./guard.js";
 import { redactSensitiveText } from "./redact.js";
 
 function gitEnvironment(workspace: Workspace): NodeJS.ProcessEnv {
@@ -53,7 +53,7 @@ function runGit(workspace: Workspace, args: string[], maxOutputBytes: number): s
   return redactSensitiveText(result.stdout.trim() || "(no output)");
 }
 
-export function gitStatus(config: CodexBridgeConfig, workspace: Workspace, guard?: PathGuard, filePath?: string): string {
+export function gitStatus(config: GcfConfig, workspace: Workspace, guard?: PathGuard, filePath?: string): string {
   const args = ["status", "--short", "--branch"];
   if (filePath?.trim()) {
     if (!guard) return "path-scoped git status requires a path guard";
@@ -63,7 +63,7 @@ export function gitStatus(config: CodexBridgeConfig, workspace: Workspace, guard
   return runGit(workspace, args, config.maxOutputBytes);
 }
 
-export function gitDiff(config: CodexBridgeConfig, guard: PathGuard, workspace: Workspace, filePath?: string, staged = false): string {
+export function gitDiff(config: GcfConfig, guard: PathGuard, workspace: Workspace, filePath?: string, staged = false): string {
   const args = ["diff", "--no-color", "--no-ext-diff", "--no-textconv"];
   if (staged) args.push("--staged");
   if (filePath?.trim()) {
@@ -73,7 +73,7 @@ export function gitDiff(config: CodexBridgeConfig, guard: PathGuard, workspace: 
   return runGit(workspace, args, config.maxOutputBytes);
 }
 
-export function gitLog(config: CodexBridgeConfig, workspace: Workspace, maxCount = 8): string {
+export function gitLog(config: GcfConfig, workspace: Workspace, maxCount = 8): string {
   const count = Math.max(1, Math.min(Math.floor(maxCount), 30));
   return runGit(workspace, ["log", `--max-count=${count}`, "--oneline", "--decorate"], config.maxOutputBytes);
 }

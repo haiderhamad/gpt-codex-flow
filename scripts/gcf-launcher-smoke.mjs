@@ -14,9 +14,9 @@ const launcher=path.join(repo,'scripts','gcf-cli.mjs');
 const tmp=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'gcf-launcher-smoke-')));
 const a=path.join(tmp,'Git-A'),b=path.join(tmp,'Git-B'),c=path.join(tmp,'Git-C');
 const manifest=path.join(tmp,'settings','projects.json');
-const env={...process.env,CODEXBRIDGE_HOME:path.join(tmp,'settings-home'),
-  CODEXBRIDGE_ALLOWED_ROOTS:c,CODEBASE_BRIDGE_ALLOWED_ROOTS:c,
-  CODEXBRIDGE_ALLOW_HOME:'1',CODEXBRIDGE_ROOT:c,NO_COLOR:'1'};
+const env={...process.env,GCF_HOME:path.join(tmp,'settings-home'),
+  GCF_ALLOWED_ROOTS:c,CODEBASE_BRIDGE_ALLOWED_ROOTS:c,
+  GCF_ALLOW_HOME:'1',GCF_ROOT:c,NO_COLOR:'1'};
 const clients=[];
 function invoke(args) {
   return spawnSync(process.execPath,[launcher,...args],{

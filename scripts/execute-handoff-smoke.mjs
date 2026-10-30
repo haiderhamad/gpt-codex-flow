@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 function run(args, options = {}) {
-  const result = spawnSync(process.execPath, ['scripts/codexbridge.mjs', ...args], {
+  const result = spawnSync(process.execPath, ['scripts/gcf.mjs', ...args], {
     cwd: path.resolve('.'),
     env: { ...process.env, NO_COLOR: '1' },
     encoding: 'utf8',
@@ -23,7 +23,7 @@ function quoteArg(value) {
   return `"${String(value).replaceAll('"', '\\"')}"`;
 }
 
-const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-execute-handoff-'));
+const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-execute-handoff-'));
 let watchRoot;
 try {
 await fs.mkdir(path.join(root, '.ai-bridge'), { recursive: true });
@@ -115,7 +115,7 @@ if (!app.includes('implemented with local/test-model: yes')) {
   throw new Error(`fake agent did not edit app.txt\n${app}`);
 }
 
-watchRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-watch-handoff-'));
+watchRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-watch-handoff-'));
 await fs.mkdir(path.join(watchRoot, '.ai-bridge'), { recursive: true });
 await fs.writeFile(path.join(watchRoot, '.ai-bridge', 'current-plan.md'), '# Current Plan\n\nNo plan written yet.\n', 'utf8');
 await fs.writeFile(path.join(watchRoot, 'app.txt'), 'start\n', 'utf8');

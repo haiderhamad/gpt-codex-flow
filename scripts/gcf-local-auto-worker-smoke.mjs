@@ -118,7 +118,7 @@ try{
   await fs.rename(transferFile,transferBackup);await fs.symlink(transferBackup,transferFile);
   await assert.rejects(runLocalWorker({worktree:root,mode:'auto',once:true}),/Unsafe transfer/);
   await fs.unlink(transferFile);await fs.rename(transferBackup,transferFile);
-  const stateBase=path.join(process.env.HOME,'.codexbridge'),backup=stateBase+'.fixture-backup';
+  const stateBase=path.join(process.env.HOME,'.gcf'),backup=stateBase+'.fixture-backup';
   await fs.rename(stateBase,backup);await fs.symlink(backup,stateBase);
   await assert.rejects(runLocalWorker({worktree:root,mode:'auto',once:true}),/owner-only real directory/);
   await fs.unlink(stateBase);await fs.rename(backup,stateBase);

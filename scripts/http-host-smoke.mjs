@@ -21,12 +21,12 @@ const listener=net.createServer();
 await new Promise((resolve,reject)=>{listener.once('error',reject);listener.listen(0,'127.0.0.1',resolve)});
 const port=listener.address().port;
 await new Promise(resolve=>listener.close(resolve));
-const env={...process.env,CODEXBRIDGE_ROOT:fixture,CODEXBRIDGE_ALLOWED_ROOTS:fixture,
-  CODEXBRIDGE_HOST:'127.0.0.1',HOST:'127.0.0.1',CODEXBRIDGE_PORT:String(port),
-  CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN:'1',CODEXBRIDGE_REQUIRE_HTTP_TOKEN:'0',
-  CODEXBRIDGE_HTTP_AUTH_MODE:'legacy',CODEXBRIDGE_WRITE_MODE:'off',CODEXBRIDGE_BASH_MODE:'off'};
-for(const key of ['CODEXBRIDGE_HTTP_TOKEN','CODEBASE_BRIDGE_HTTP_TOKEN','CODEXBRIDGE_PROJECT_ROOTS_FILE',
-  'CODEXBRIDGE_TUNNEL_MODE','CODEXBRIDGE_HTTP_ALLOWED_ORIGINS']) delete env[key];
+const env={...process.env,GCF_ROOT:fixture,GCF_ALLOWED_ROOTS:fixture,
+  GCF_HOST:'127.0.0.1',HOST:'127.0.0.1',GCF_PORT:String(port),
+  GCF_ALLOW_NO_HTTP_TOKEN:'1',GCF_REQUIRE_HTTP_TOKEN:'0',
+  GCF_HTTP_AUTH_MODE:'legacy',GCF_WRITE_MODE:'off',GCF_BASH_MODE:'off'};
+for(const key of ['GCF_HTTP_TOKEN','CODEBASE_BRIDGE_HTTP_TOKEN','GCF_PROJECT_ROOTS_FILE',
+  'GCF_TUNNEL_MODE','GCF_HTTP_ALLOWED_ORIGINS']) delete env[key];
 const child=spawn(process.execPath,['dist/http.js'],{env,stdio:'ignore'});
 const closed=new Promise(resolve=>child.once('exit',resolve));
 function get(target,host,extra={}) {

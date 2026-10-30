@@ -13,7 +13,7 @@ const launcher=path.join(repo,'scripts','gcf-cli.mjs');
 const tmp=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'gcf-chat-guide-')));
 const a=path.join(tmp,'A'),b=path.join(tmp,'B');
 const manifest=path.join(tmp,'projects.json');
-const env={...process.env,CODEXBRIDGE_HOME:path.join(tmp,'unconfigured-home'),NO_COLOR:'1'};
+const env={...process.env,GCF_HOME:path.join(tmp,'unconfigured-home'),NO_COLOR:'1'};
 const id=root=>'ws_'+createHash('sha256').update(root).digest('hex').slice(0,24);
 const invoke=args=>spawnSync(process.execPath,[launcher,'chat-guide',...args],{
   cwd:repo,env,encoding:'utf8',timeout:12000,maxBuffer:200000
@@ -42,6 +42,13 @@ try {
   assert.match(success.stdout,/ChatGPT Project Instructions/);
   assert.match(success.stdout,/list_projects.*select_project/);
   assert.match(success.stdout,/project_summary/);
+  assert.match(success.stdout,/Before substantive work, read AGENTS\.md/);
+  assert.match(success.stdout,/AGENTS\.md points to NOTION_MEMORY\.md/);
+  assert.match(success.stdout,/official Notion plugin\/MCP/);
+  assert.match(success.stdout,/NOTION_SYNC_PENDING/);
+  assert.match(success.stdout,/GCF handoff, shared_project_state, task_resume and Task Inbox never depend on Notion/);
+  assert.match(success.stdout,/SKIP Notion and do not report a pending sync/);
+  assert.match(success.stdout,/If opted in but Notion is unavailable, continue GCF work normally/);
   assert.match(success.stdout,/New chat starter/);
   assert.match(success.stdout,new RegExp(id(b)));
   assert.doesNotMatch(success.stdout,new RegExp(id(a)));

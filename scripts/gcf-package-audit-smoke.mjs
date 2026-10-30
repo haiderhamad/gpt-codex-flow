@@ -3,9 +3,9 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {auditGcfMetadata,sourceAudit} from './gcf-package-audit.mjs';
-const base={name:'@naplesblue/codexbridge',files:['dist','docs','scripts','README.md'],
-  bin:{codexbridge:'scripts/codexbridge.mjs'},publishConfig:{access:'public'}};
-const x=auditGcfMetadata({pkg:base,readmeHeading:'# CodexBridge',
+const base={name:'@naplesblue/gcf',files:['dist','docs','scripts','README.md'],
+  bin:{gcf:'scripts/gcf.mjs'},publishConfig:{access:'public'}};
+const x=auditGcfMetadata({pkg:base,readmeHeading:'# Gcf',
   inventory:['docs/GCF_NATIVE_SANDBOX_V1_DECISION.md',
     'scripts/gcf-owner-native-role-audit.swift','scripts/gcf-cli.mjs',
     'scripts/.env.secret','docs/guide.md']});
@@ -20,6 +20,9 @@ assert.equal(x.npm_pack_executed,false);
 const y=auditGcfMetadata({pkg:{name:'gpt-codex-flow',files:['dist','scripts/gcf-cli.mjs','README.md'],
   bin:{gcf:'scripts/gcf-cli.mjs'}},readmeHeading:'# GPT Codex Flow',inventory:[]});
 assert.deepEqual(y.blockers.map(b=>b.code),['NPM_PACK_NOT_VERIFIED']);
+const banner=auditGcfMetadata({pkg:{name:'gpt-codex-flow',files:['dist/*.js'],bin:{gcf:'scripts/gcf-cli.mjs'}},
+  readmeHeading:'<p align="center"><img src="brand.svg"></p>\n<h1 align="center">GPT Codex Flow</h1>\n',inventory:[]});
+assert.equal(banner.blockers.some(b=>b.code==='UPSTREAM_README'),false,'Centered README logo must not hide a valid product H1');
 const z=await sourceAudit();
 assert.equal(z.status,'RELEASE_BLOCKED');
 assert.ok(z.counts.candidate_scripts>0);

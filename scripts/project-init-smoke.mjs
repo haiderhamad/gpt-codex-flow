@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 
-const cli = path.resolve('scripts/codexbridge.mjs');
+const cli = path.resolve('scripts/gcf.mjs');
 
 function runInit(root, envOverrides = {}) {
   return spawnSync(process.execPath, [cli, 'init', '--root', root], {
@@ -45,7 +45,7 @@ async function snapshot(files) {
 
 const noteNames = ['PROJECT.md', 'HISTORY.md', 'HANDOFF.md'];
 
-const freshRoot = await gitRepo('codexbridge-project-init-fresh-');
+const freshRoot = await gitRepo('gcf-project-init-fresh-');
 requireSuccess(runInit(freshRoot), 'fresh project init');
 const freshEntries = (await fs.readdir(path.join(freshRoot, '.ai-bridge'))).sort();
 if (JSON.stringify(freshEntries) !== JSON.stringify([...noteNames].sort())) {
@@ -86,7 +86,7 @@ if (JSON.stringify(firstSnapshot) !== JSON.stringify(secondSnapshot)) {
   throw new Error('repeated init changed project context content or file metadata');
 }
 
-const preserveRoot = await gitRepo('codexbridge-project-init-preserve-');
+const preserveRoot = await gitRepo('gcf-project-init-preserve-');
 await fs.mkdir(path.join(preserveRoot, '.ai-bridge'));
 const sentinels = new Map([
   [path.join(preserveRoot, 'AGENTS.md'), '# Keep these instructions\n'],
@@ -101,7 +101,7 @@ requireSuccess(runInit(preserveRoot), 'preserving project init');
 for (const [file, content] of sentinels) {
   if (await fs.readFile(file, 'utf8') !== content) throw new Error(`init changed existing file: ${file}`);
 }
-const nonRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-project-init-nonrepo-'));
+const nonRepo = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-project-init-nonrepo-'));
 requireFailure(runInit(nonRepo), 'non-repository root', /requires an existing Git repository root/i);
 try {
   await fs.stat(path.join(nonRepo, '.ai-bridge'));
@@ -116,7 +116,7 @@ requireFailure(
   /requires an existing Git repository root/i
 );
 
-const nestedRoot = await gitRepo('codexbridge-project-init-nested-');
+const nestedRoot = await gitRepo('gcf-project-init-nested-');
 const nested = path.join(nestedRoot, 'nested');
 await fs.mkdir(nested);
 requireFailure(runInit(nested), 'nested repository path', /must select the Git repository top-level/i);
@@ -128,8 +128,8 @@ try {
 }
 requireSuccess(runInit(path.join(nested, '..')), 'normalized repository root');
 
-const symlinkRoot = await gitRepo('codexbridge-project-init-link-root-');
-const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-project-init-outside-'));
+const symlinkRoot = await gitRepo('gcf-project-init-link-root-');
+const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-project-init-outside-'));
 try {
   await fs.symlink(outsideDir, path.join(symlinkRoot, '.ai-bridge'), process.platform === 'win32' ? 'junction' : 'dir');
   requireFailure(runInit(symlinkRoot), 'symlinked bridge directory', /symlinked \.ai-bridge directory/i);
@@ -138,7 +138,7 @@ try {
   if (process.platform !== 'win32' || error?.code !== 'EPERM') throw error;
 }
 
-const fileLinkRoot = await gitRepo('codexbridge-project-init-file-link-');
+const fileLinkRoot = await gitRepo('gcf-project-init-file-link-');
 await fs.mkdir(path.join(fileLinkRoot, '.ai-bridge'));
 const outsideFile = path.join(outsideDir, 'escaped-project.md');
 try {
@@ -154,7 +154,7 @@ try {
   if (process.platform !== 'win32' || error?.code !== 'EPERM') throw error;
 }
 
-const partialRoot = await gitRepo('codexbridge-project-init-partial-');
+const partialRoot = await gitRepo('gcf-project-init-partial-');
 await fs.mkdir(path.join(partialRoot, '.ai-bridge'));
 const customHandoff = '# Existing human-authored handoff\n';
 await fs.writeFile(path.join(partialRoot, '.ai-bridge', 'HANDOFF.md'), customHandoff, 'utf8');
@@ -166,7 +166,7 @@ for (const name of ['PROJECT.md', 'HISTORY.md']) {
   await fs.stat(path.join(partialRoot, '.ai-bridge', name));
 }
 
-const obstructedRoot = await gitRepo('codexbridge-project-init-obstructed-');
+const obstructedRoot = await gitRepo('gcf-project-init-obstructed-');
 await fs.mkdir(path.join(obstructedRoot, '.ai-bridge'));
 await fs.mkdir(path.join(obstructedRoot, '.ai-bridge', 'PROJECT.md'));
 requireFailure(runInit(obstructedRoot), 'directory in place of a project note', /not a regular file/i);
@@ -179,7 +179,7 @@ for (const name of ['HISTORY.md', 'HANDOFF.md']) {
   }
 }
 
-const concurrentRoot = await gitRepo('codexbridge-project-init-concurrent-');
+const concurrentRoot = await gitRepo('gcf-project-init-concurrent-');
 await Promise.all(Array.from({ length: 6 }, () =>
   execFileAsync(process.execPath, [cli, 'init', '--root', concurrentRoot], {
     cwd: path.resolve('.'),

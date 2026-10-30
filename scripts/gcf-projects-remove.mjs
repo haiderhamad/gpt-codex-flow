@@ -22,8 +22,8 @@ for(let i=0;i<argv.length;i++){
 }
 if(preview===run || !path.isAbsolute(target))
   throw Error('Use --preview OR --run with exact --project /absolute/path/to/Git.');
-const configFile=output || path.join(process.env.CODEXBRIDGE_HOME?
-  path.resolve(process.env.CODEXBRIDGE_HOME):path.join(os.homedir(),'.codexbridge'),
+const configFile=output || path.join(process.env.GCF_HOME?
+  path.resolve(process.env.GCF_HOME):path.join(os.homedir(),'.gcf'),
   'gpt-codex-flow','projects.json');
 if(!path.isAbsolute(configFile))throw Error('Manifest path must be absolute');
 const file=path.resolve(configFile);

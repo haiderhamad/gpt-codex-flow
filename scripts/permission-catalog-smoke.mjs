@@ -22,7 +22,7 @@ async function inspectMode(mode, codexSessions = 'off') {
       '--write', 'off'
     ],
     cwd: process.cwd(),
-    env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root }
+    env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root }
   });
   try {
     await client.connect(transport);
@@ -68,7 +68,7 @@ try {
   for (const name of ['request_transfer', 'accept_transfer', 'cancel_transfer', 'task_inbox_post', 'task_plan', 'task_report']) {
     assert.equal(permissionEntryForTool(name).effect, 'handoff-state-write');
   }
-  assert.equal(permissionEntryForTool('codexbridge_self_test').effect, 'diagnostic-mixed');
+  assert.equal(permissionEntryForTool('gcf_self_test').effect, 'diagnostic-mixed');
   assert.equal(permissionEntryForTool('task_verify').effect, 'execution');
   assert.equal(permissionEntryForTool('ssh_exec').effect, 'execution');
   for (const invalid of ['unknown_future_tool', 'constructor', 'toString', '__proto__']) {

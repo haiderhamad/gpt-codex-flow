@@ -7,7 +7,7 @@ import { prepareSandboxInvocation } from '../dist/sandboxInvocation.js';
 
 // IMPORTANT: This deliberately exercises the installed Codex CLI on macOS only.
 // Windows needs independent native negative tests; never infer its protection
-// from these results. This script does not enable any CodexBridge tool mode.
+// from these results. This script does not enable any Gcf tool mode.
 if (process.platform !== 'darwin') {
   console.log('SKIP: restricted native sandbox checks require macOS. Windows is NOT verified.');
   process.exit(0);
@@ -17,7 +17,7 @@ const hasFile = path => access(path).then(() => true, () => false);
 const cli = execFileSync('/usr/bin/which', ['codex'], { encoding: 'utf8' }).trim();
 assert.ok(cli.startsWith('/'), 'Codex CLI did not resolve to an absolute path');
 
-const root = await mkdtemp(join(homedir(), 'codexbridge-restricted-test-'));
+const root = await mkdtemp(join(homedir(), 'gcf-restricted-test-'));
 const workspace = join(root, 'workspace');
 const outside = join(root, 'outside');
 const codexHome = join(root, 'codex-home');

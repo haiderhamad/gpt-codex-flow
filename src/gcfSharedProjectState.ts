@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type {CodexBridgeConfig} from './config.js';
+import type {GcfConfig} from './config.js';
 import type {Workspace} from './guard.js';
 import {hasGitWorkingTree,gitStatus} from './gitOps.js';
 
@@ -18,7 +18,7 @@ function record(value:unknown):Obj {
   if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid saved project-state record.');
   return value as Obj;
 }
-function context(config:CodexBridgeConfig,workspace:Workspace):string {
+function context(config:GcfConfig,workspace:Workspace):string {
   const parts=config.contextDir.split('/');
   if(!config.contextDir||path.isAbsolute(config.contextDir)||parts.some(x=>!x||x==='..'||x==='.')||
       parts.some(x=>x.includes('\\')||x.includes('\0')))
@@ -106,7 +106,7 @@ function events(ctx:string) {
   }
   return {latest:parsed.at(-1)??null,count:parsed.length,source:'operation-journal.jsonl'};
 }
-export function readSharedProjectState(config:CodexBridgeConfig,workspace:Workspace) {
+export function readSharedProjectState(config:GcfConfig,workspace:Workspace) {
   if(!config.allowedRoots.some(root=>workspace.root===root))
     throw Error('Shared state requires an exact approved project root.');
   if(fs.realpathSync(workspace.root)!==workspace.root)

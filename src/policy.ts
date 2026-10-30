@@ -1,5 +1,5 @@
-import type { CodexBridgeConfig, SshMode } from "./config.js";
-import { CodexBridgeError } from "./guard.js";
+import type { GcfConfig, SshMode } from "./config.js";
+import { GcfError } from "./guard.js";
 
 export type PolicyDecisionKind = "allow" | "ask" | "deny";
 export type PolicyRisk = "low" | "medium" | "high";
@@ -194,7 +194,7 @@ export function decideSshCommandPolicy(mode: SshMode, command: string): PolicyDe
   if (mode === "off") {
     return {
       decision: "deny",
-      reason: "SSH execution is disabled. Start with CODEXBRIDGE_SSH_MODE=safe or CODEXBRIDGE_SSH_MODE=full to enable it.",
+      reason: "SSH execution is disabled. Start with GCF_SSH_MODE=safe or GCF_SSH_MODE=full to enable it.",
       category: "ssh-disabled",
       risk: "low"
     };
@@ -204,7 +204,7 @@ export function decideSshCommandPolicy(mode: SshMode, command: string): PolicyDe
       return {
         decision: mode === "full" ? "ask" : "deny",
         reason:
-          `Remote command is blocked in CODEXBRIDGE_SSH_MODE=${mode}: ${normalized}\n` +
+          `Remote command is blocked in GCF_SSH_MODE=${mode}: ${normalized}\n` +
           "Use safe status/log commands, or rerun only after explicit user approval in full SSH mode.",
         category: "ssh-blocked-command",
         risk: "high"
@@ -237,12 +237,12 @@ export function decideSshCommandPolicy(mode: SshMode, command: string): PolicyDe
   };
 }
 
-export function decideCommandPolicy(config: CodexBridgeConfig, command: string): PolicyDecision {
+export function decideCommandPolicy(config: GcfConfig, command: string): PolicyDecision {
   const normalized = compact(command);
   if (config.bashMode === "off") {
     return {
       decision: "deny",
-      reason: "bash tool is disabled. Start with CODEXBRIDGE_BASH_MODE=safe or CODEXBRIDGE_BASH_MODE=full to enable it.",
+      reason: "bash tool is disabled. Start with GCF_BASH_MODE=safe or GCF_BASH_MODE=full to enable it.",
       category: "bash-disabled",
       risk: "low"
     };
@@ -261,8 +261,8 @@ export function decideCommandPolicy(config: CodexBridgeConfig, command: string):
       return {
         decision: "deny",
         reason:
-          `Command is blocked in CODEXBRIDGE_BASH_MODE=safe: ${normalized}\n` +
-          "Use separate read/search/git tools, or restart with CODEXBRIDGE_BASH_MODE=full only for trusted repos.",
+          `Command is blocked in GCF_BASH_MODE=safe: ${normalized}\n` +
+          "Use separate read/search/git tools, or restart with GCF_BASH_MODE=full only for trusted repos.",
         category: "blocked-command",
         risk: "high"
       };
@@ -275,7 +275,7 @@ export function decideCommandPolicy(config: CodexBridgeConfig, command: string):
       reason:
         `Command is not in the safe bash allowlist: ${normalized}\n` +
         "Allowed examples: ls, find, git status, git diff, npm test, npm run typecheck, npm run build:clients, pytest, go test, cargo test. Use read/search tools for file contents. " +
-        "Use CODEXBRIDGE_BASH_MODE=full for trusted local automation.",
+        "Use GCF_BASH_MODE=full for trusted local automation.",
       category: "unlisted-command",
       risk: "medium"
     };
@@ -289,7 +289,7 @@ export function decideCommandPolicy(config: CodexBridgeConfig, command: string):
   };
 }
 
-export function assertWriteToolAllowed(config: CodexBridgeConfig, relPath: string): void {
+export function assertWriteToolAllowed(config: GcfConfig, relPath: string): void {
   if (config.writeMode === "workspace") return;
   // PathGuard supplies a workspace-relative path; require a whole directory segment.
   const normalized = relPath.replace(/\\/g, "/").replace(/^\.\//, "");
@@ -300,19 +300,19 @@ export function assertWriteToolAllowed(config: CodexBridgeConfig, relPath: strin
     (normalized === contextDir || normalized.startsWith(contextDir + "/"))
   ) return;
   if (config.writeMode === "handoff") {
-    throw new CodexBridgeError(
-      "Source writes are disabled because CODEXBRIDGE_WRITE_MODE=handoff. " +
+    throw new GcfError(
+      "Source writes are disabled because GCF_WRITE_MODE=handoff. " +
         "Use handoff_to_agent or handoff_to_codex, or write/edit only inside " + config.contextDir + "/."
     );
   }
-  throw new CodexBridgeError(
-    "write/edit tools are disabled because CODEXBRIDGE_WRITE_MODE=off. " +
+  throw new GcfError(
+    "write/edit tools are disabled because GCF_WRITE_MODE=off. " +
       "handoff_to_agent and handoff_to_codex are still available for planning."
   );
 }
 
 export function decideWritePolicy(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   relPath: string,
   bytes: number,
   options: WritePolicyOptions = {}

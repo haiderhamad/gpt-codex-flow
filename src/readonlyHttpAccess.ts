@@ -8,7 +8,7 @@ import { permissionEntryForTool } from "./permissionCatalog.js";
  */
 const READONLY_TOOL_NAMES = Object.freeze([
   "server_config",
-  "codexbridge_inventory",
+  "gcf_inventory",
   "workspace_snapshot",
   "tree",
   "search",
@@ -36,10 +36,10 @@ export function validateReadOnlyHttpToken(
 ): string | undefined {
   if (readOnlyToken === undefined) return undefined;
   if (!primaryToken) {
-    throw new Error("CODEXBRIDGE_HTTP_READONLY_TOKEN requires CODEXBRIDGE_HTTP_TOKEN.");
+    throw new Error("GCF_HTTP_READONLY_TOKEN requires GCF_HTTP_TOKEN.");
   }
   if (!/^[A-Za-z0-9._~-]{32,256}$/.test(readOnlyToken)) {
-    throw new Error("CODEXBRIDGE_HTTP_READONLY_TOKEN must be a random 32-256 character URL-safe secret.");
+    throw new Error("GCF_HTTP_READONLY_TOKEN must be a random 32-256 character URL-safe secret.");
   }
   if (readOnlyToken === primaryToken) {
     throw new Error("Read-only HTTP token must differ from the primary HTTP token.");

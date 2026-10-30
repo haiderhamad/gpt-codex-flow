@@ -27,7 +27,7 @@ function startFixtureAgent(cwd) {
     '" fixture-agent.mjs --task-file {{plan_file}}';
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [
-      'scripts/codexbridge.mjs', 'execute-handoff',
+      'scripts/gcf.mjs', 'execute-handoff',
       '--root', cwd, '--agent', 'custom',
       '--command', command, '--timeout-ms', '15000', '--yes'
     ], {

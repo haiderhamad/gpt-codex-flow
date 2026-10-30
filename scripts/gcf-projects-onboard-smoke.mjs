@@ -20,9 +20,9 @@ const nested=path.join(rootA,'nested-git');
 const configFile=path.join(temp,'owner','projects.json');
 const clients=[];
 const env={...process.env,HOME:temp,TMPDIR:temp,NO_COLOR:'1'};
-for(const k of ['CODEXBRIDGE_ROOT','CODEBASE_BRIDGE_REPO_ROOT',
-  'CODEXBRIDGE_ALLOWED_ROOTS','CODEBASE_BRIDGE_ALLOWED_ROOTS',
-  'CODEXBRIDGE_PROJECT_ROOTS_FILE','CODEXBRIDGE_ALLOW_HOME'])delete env[k];
+for(const k of ['GCF_ROOT','CODEBASE_BRIDGE_REPO_ROOT',
+  'GCF_ALLOWED_ROOTS','CODEBASE_BRIDGE_ALLOWED_ROOTS',
+  'GCF_PROJECT_ROOTS_FILE','GCF_ALLOW_HOME'])delete env[k];
 function cli(...args) {
   return spawnSync(process.execPath,['scripts/gcf-projects-onboard.mjs',...args],
     {cwd:process.cwd(),env,encoding:'utf8',timeout:15000,maxBuffer:500000,

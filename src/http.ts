@@ -5,7 +5,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import cors from "cors";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { loadConfig, type CodexBridgeConfig } from "./config.js";
+import { loadConfig, type GcfConfig } from "./config.js";
 import {
   profilePathForRoot,
   readRuntimeConnection,
@@ -15,7 +15,7 @@ import {
   type TunnelMode,
   type WorkspaceProfile
 } from "./profileStore.js";
-import { createCodexBridgeServer } from "./server.js";
+import { createGcfServer } from "./server.js";
 import { gcfBrandMark } from "./gcfBrandMark.js";
 import { configuredHttpOrigins, isAllowedHttpOrigin, isAllowedTokenlessHost } from "./httpOriginPolicy.js";
 
@@ -56,17 +56,17 @@ function envValue(...names: string[]): string | undefined {
 }
 
 function runtimeTunnelFallback(): TunnelMode {
-  const tunnel = envValue("CODEXBRIDGE_TUNNEL");
+  const tunnel = envValue("GCF_TUNNEL");
   if (tunnel && TUNNELS.includes(tunnel as TunnelMode)) {
     return tunnel as TunnelMode;
   }
-  return envValue("CODEXBRIDGE_TUNNEL_MODE") === "0" ? "none" : "cloudflare";
+  return envValue("GCF_TUNNEL_MODE") === "0" ? "none" : "cloudflare";
 }
 
-function profileValues(config: CodexBridgeConfig, profile = readWorkspaceProfile(config.defaultRoot)): ProfileFormValues {
+function profileValues(config: GcfConfig, profile = readWorkspaceProfile(config.defaultRoot)): ProfileFormValues {
   return {
     port: String(profile.port ?? config.port),
-    mode: oneOf(profile.mode ?? envValue("CODEXBRIDGE_MODE"), MODES, "agent"),
+    mode: oneOf(profile.mode ?? envValue("GCF_MODE"), MODES, "agent"),
     tunnel: oneOf(profile.tunnel, TUNNELS, runtimeTunnelFallback()),
     bash: oneOf(profile.bash ?? config.bashMode, BASH_MODES, config.bashMode),
     bashTranscript: oneOf(profile.bashTranscript ?? config.bashTranscript, BASH_TRANSCRIPTS, config.bashTranscript),
@@ -81,7 +81,7 @@ function profileValues(config: CodexBridgeConfig, profile = readWorkspaceProfile
   };
 }
 
-function profileResponse(config: CodexBridgeConfig): Record<string, unknown> {
+function profileResponse(config: GcfConfig): Record<string, unknown> {
   const profile = readWorkspaceProfile(config.defaultRoot);
   const runtime = readRuntimeConnection(config.defaultRoot);
   return {
@@ -118,17 +118,17 @@ async function main(): Promise<void> {
   const config = loadConfig();
   if ((config.requireHttpToken || config.httpAuthMode === "header-only") && !config.authToken) {
     throw new Error(
-      "CODEXBRIDGE_HTTP_TOKEN is required for this HTTP binding. " +
-        "Set CODEXBRIDGE_HTTP_TOKEN or use `codexbridge start` to generate one. " +
+      "GCF_HTTP_TOKEN is required for this HTTP binding. " +
+        "Set GCF_HTTP_TOKEN or use `gcf start` to generate one. " +
         (config.httpAuthMode === "header-only"
           ? "Header-only mode never allows missing HTTP credentials."
-          : "CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN=1 is permitted only for a trusted local-only setup.")
+          : "GCF_ALLOW_NO_HTTP_TOKEN=1 is permitted only for a trusted local-only setup.")
     );
   }
 
   configuredHttpOrigins(config); // Fail fast on malformed explicit origin configuration.
   const app = express();
-  const logRequests = process.env.CODEXBRIDGE_LOG_REQUESTS === "1";
+  const logRequests = process.env.GCF_LOG_REQUESTS === "1";
 
   function tokenMatches(value: unknown): boolean {
     if (!config.authToken || typeof value !== "string") return false;
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
     }
     const started = Date.now();
     res.on("finish", () => {
-      console.error(`[CodexBridge] ${req.method} ${req.path} -> ${res.statusCode} ${Date.now() - started}ms`);
+      console.error(`[GCF] ${req.method} ${req.path} -> ${res.statusCode} ${Date.now() - started}ms`);
     });
     next();
   });
@@ -222,13 +222,13 @@ async function main(): Promise<void> {
       : undefined;
     const queryToken = typeof req.query.gcf_token === "string"
       ? req.query.gcf_token
-      : typeof req.query.codexbridge_token === "string"
-          ? req.query.codexbridge_token
+      : typeof req.query.gcf_token === "string"
+          ? req.query.gcf_token
           : typeof req.query.token === "string"
               ? req.query.token
               : undefined;
     const queryCredentialSupplied = Object.prototype.hasOwnProperty.call(req.query, "gcf_token") ||
-      Object.prototype.hasOwnProperty.call(req.query, "codexbridge_token") ||
+      Object.prototype.hasOwnProperty.call(req.query, "gcf_token") ||
       Object.prototype.hasOwnProperty.call(req.query, "token");
     const authorized = config.httpAuthMode === "header-only"
       ? !queryCredentialSupplied && tokenMatches(bearer)
@@ -350,7 +350,7 @@ async function main(): Promise<void> {
           if (closedSessionId) transports.delete(closedSessionId);
         };
 
-        const server = createCodexBridgeServer(config);
+        const server = createGcfServer(config);
         await server.connect(transport);
       } else {
         res.status(400).json({
@@ -388,12 +388,12 @@ async function main(): Promise<void> {
   app.delete("/mcp", handleSessionRequest);
 
   app.listen(config.port, config.host, () => {
-    console.error(`[CodexBridge] HTTP MCP listening on http://${config.host}:${config.port}/mcp`);
-    console.error(`[CodexBridge] defaultRoot=${config.defaultRoot}`);
-    console.error(`[CodexBridge] allowedRoots=${config.allowedRoots.join(", ")}`);
-    console.error(`[CodexBridge] bashMode=${config.bashMode}`);
-    console.error(`[CodexBridge] writeMode=${config.writeMode}`);
-    console.error(`[CodexBridge] widgetDomain=${config.widgetDomain}`);
+    console.error(`[GCF] HTTP MCP listening on http://${config.host}:${config.port}/mcp`);
+    console.error(`[GCF] defaultRoot=${config.defaultRoot}`);
+    console.error(`[GCF] allowedRoots=${config.allowedRoots.join(", ")}`);
+    console.error(`[GCF] bashMode=${config.bashMode}`);
+    console.error(`[GCF] writeMode=${config.writeMode}`);
+    console.error(`[GCF] widgetDomain=${config.widgetDomain}`);
   });
 }
 

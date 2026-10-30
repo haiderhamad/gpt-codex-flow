@@ -33,7 +33,7 @@ try {
   assert.match(gitDiff({ maxOutputBytes: 100_000 }, { resolve() { throw Error('unused'); } }, { root: ordinary }), /Git features require a Git repository/);
 
   const env = { ...process.env, HOME: temp, NO_COLOR: '1' };
-  for (const key of ['CODEXBRIDGE_ROOT', 'CODEXBRIDGE_ALLOWED_ROOTS', 'CODEXBRIDGE_PROJECT_ROOTS_FILE', 'CODEXBRIDGE_ALLOW_HOME']) delete env[key];
+  for (const key of ['GCF_ROOT', 'GCF_ALLOWED_ROOTS', 'GCF_PROJECT_ROOTS_FILE', 'GCF_ALLOW_HOME']) delete env[key];
   client = new Client({ name: 'gcf-nongit-smoke', version: '1.0.0' }, { capabilities: {} });
   await client.connect(new StdioClientTransport({
     command: process.execPath,

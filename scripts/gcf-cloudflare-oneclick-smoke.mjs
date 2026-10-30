@@ -16,12 +16,11 @@ fs.writeFileSync(fake,[
 '#!/usr/bin/env node',
 "const fs=require('node:fs');",
 "const local=new URL(process.argv.at(-1));",
-"fs.writeFileSync(process.env.GCF_TEST_REPORT,local.port);",
+`fs.writeFileSync(${JSON.stringify(report)},local.port);`,
 "process.stderr.write('https://qa-fixture.trycloudflare.com\\n');",
 "setInterval(()=>{},5000);"
 ].join('\n'));
 fs.chmodSync(fake,0o700);
-process.env.GCF_TEST_REPORT=report;
 const manifest=path.join(dir,'projects.json');
 fs.writeFileSync(manifest,JSON.stringify({version:1,roots:[a,b]})+'\n');
 let approve=false, approvals=0;
@@ -46,7 +45,7 @@ try{
   assert.equal(cloud.status().state,'stopped');
   approve=true;
   response=await request('/owner/cloudflare',{action:'start',projects:[a],access:'read',fullAccessConfirmed:false},auth);
-  assert.equal(response.status,200);
+  assert.equal(response.status,200,response.status===200?'':`Cloudflare fixture rejected: ${JSON.stringify(await response.clone().json()).slice(0,400)}`);
   const result=(await response.json()).cloudflare;
   assert.equal(result.state,'tunnel_ready');assert.equal(result.access,'read');assert.equal(result.project,a);assert.deepEqual(result.projects,[a]);
   assert.ok(result.serverUrl.startsWith('https://qa-fixture.trycloudflare.com/mcp?'));
@@ -93,5 +92,4 @@ try{
   await cloud.stop();
   await new Promise(done=>owner.server.close(done));
   fs.rmSync(dir,{recursive:true,force:true});
-  delete process.env.GCF_TEST_REPORT;
 }

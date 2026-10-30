@@ -22,7 +22,7 @@ const approvedLegacyDeletions=new Set([
   'docs/favicon.svg','docs/star.svg','docs/og.svg'
 ]);
 const safeAsset=/\.(?:png|jpe?g|webp|gif|ico)$/i;
-const sensitivePath=/(?:^|\/)(?:\.env(?:\.[^/]*)?|\.ai-bridge|\.codexbridge|\.ssh|\.aws|\.npmrc|\.netrc|id_(?:rsa|ed25519)|credentials(?:\.[^/]*)?|secrets?\.json|.*\.(?:pem|p12|pfx|key|sqlite|db))(?:\/|$)/i;
+const sensitivePath=/(?:^|\/)(?:\.env(?:\.[^/]*)?|\.ai-bridge|\.gcf|\.co[a-z]*bridge|\.ssh|\.aws|\.npmrc|\.netrc|gcf-(?:lead|codex-execution)-preferences\.json|id_(?:rsa|ed25519)|credentials(?:\.[^/]*)?|secrets?\.json|.*\.(?:pem|p12|pfx|key|sqlite|db))(?:\/|$)/i;
 const isGenerated=/(?:^|\/)(?:node_modules|dist|coverage|output|\.git)(?:\/|$)/;
 const patterns=[
   {code:'PRIVATE_KEY_MATERIAL',match:new RegExp('-----BEGIN (?:RSA|OPENSSH|EC|DSA|ENCRYPTED) PRIVATE KEY-----')},

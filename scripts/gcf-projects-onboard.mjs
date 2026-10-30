@@ -38,8 +38,8 @@ for(let i=0;i<args.length;i++) {
   else throw Error('Unknown argument: '+arg+'\n'+usage());
 }
 if(run===preview || paths.length<1) throw Error('Choose --preview OR --run and at least one --project.\n'+usage());
-const base=process.env.CODEXBRIDGE_HOME ?
-  path.resolve(process.env.CODEXBRIDGE_HOME):path.join(os.homedir(),'.codexbridge');
+const base=process.env.GCF_HOME ?
+  path.resolve(process.env.GCF_HOME):path.join(os.homedir(),'.gcf');
 const target=output || path.join(base,'gpt-codex-flow','projects.json');
 if(!path.isAbsolute(target)) throw Error('--output must be absolute');
 const configFile=path.resolve(target);

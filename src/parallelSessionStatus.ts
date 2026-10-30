@@ -1,6 +1,6 @@
 import fsp from "node:fs/promises";
-import type { CodexBridgeConfig } from "./config.js";
-import { CodexBridgeError, PathGuard, type Workspace } from "./guard.js";
+import type { GcfConfig } from "./config.js";
+import { GcfError, PathGuard, type Workspace } from "./guard.js";
 
 export interface ParallelRoleStatus {
   state: "assigned" | "reported";
@@ -34,7 +34,7 @@ function safeRole(value: any): ParallelRoleStatus {
       typeof value.task !== "string" || value.task.length > 1500 ||
       !Array.isArray(value.target_paths) || value.target_paths.length > 30 ||
       !value.target_paths.every(isRelativeFile)) {
-    throw new CodexBridgeError("Invalid parallel role state.");
+    throw new GcfError("Invalid parallel role state.");
   }
   return {
     state: value.state,
@@ -44,7 +44,7 @@ function safeRole(value: any): ParallelRoleStatus {
   };
 }
 export async function readParallelSessionStatus(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace
 ): Promise<ParallelStatus> {
@@ -60,7 +60,7 @@ export async function readParallelSessionStatus(
     const handle = await fsp.open(file, "r");
     try {
       const info = await handle.stat();
-      if (!info.isFile() || info.size > 32_000) throw new CodexBridgeError("Parallel session state is not a bounded regular file.");
+      if (!info.isFile() || info.size > 32_000) throw new GcfError("Parallel session state is not a bounded regular file.");
       raw = await handle.readFile({ encoding: "utf8" });
     } finally { await handle.close(); }
   } catch (error) {
@@ -68,14 +68,14 @@ export async function readParallelSessionStatus(
     throw error;
   }
   let state: any;
-  try { state = JSON.parse(raw); } catch { throw new CodexBridgeError("Invalid parallel session JSON."); }
+  try { state = JSON.parse(raw); } catch { throw new GcfError("Invalid parallel session JSON."); }
   if (state?.schema !== 1 || typeof state.session_id !== "string" ||
       !/^parallel_[a-f0-9-]{36}$/.test(state.session_id) ||
       typeof state.base_head !== "string" || !/^[a-f0-9]{40,64}$/.test(state.base_head) ||
       typeof state.goal !== "string" || state.goal.length > 1500 ||
       !states.has(state.status) || typeof state.base !== "string" ||
       state.base !== workspace.root) {
-    throw new CodexBridgeError("Parallel state does not belong to this workspace or is invalid.");
+    throw new GcfError("Parallel state does not belong to this workspace or is invalid.");
   }
   const roles = {
     chatgpt: safeRole(state.roles?.chatgpt),
@@ -87,7 +87,7 @@ export async function readParallelSessionStatus(
         !Array.isArray(state.preview.paths) || state.preview.paths.length > 60 ||
         !state.preview.paths.every(isRelativeFile) ||
         (state.preview.sha256 !== null && !/^[a-f0-9]{64}$/.test(state.preview.sha256))) {
-      throw new CodexBridgeError("Invalid parallel preview record.");
+      throw new GcfError("Invalid parallel preview record.");
     }
     preview = {
       status: state.preview.status,

@@ -95,8 +95,8 @@ function ownerScript(argumentsList){
 async function runWizard(){
   if(!process.stdin.isTTY||!process.stdout.isTTY)
     throw Error('Run guided setup inside a local interactive Terminal.');
-  const base=process.env.CODEXBRIDGE_HOME
-    ?path.resolve(process.env.CODEXBRIDGE_HOME):path.join(os.homedir(),'.codexbridge');
+  const base=process.env.GCF_HOME
+    ?path.resolve(process.env.GCF_HOME):path.join(os.homedir(),'.gcf');
   const manifest=path.join(base,'gpt-codex-flow','projects.json');
   const rl=createInterface({input:process.stdin,output:process.stdout});
   let roots=[],confirmed=false,repair=false;

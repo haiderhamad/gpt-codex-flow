@@ -48,13 +48,13 @@ export interface RuntimeConnection {
   toolMode?: ToolMode | string;
 }
 
-export function codexBridgeHome(): string {
-  const customHome = process.env.CODEXBRIDGE_HOME;
-  return customHome ? path.resolve(expandHome(customHome)) : path.join(os.homedir(), ".codexbridge");
+export function gcfHome(): string {
+  const customHome = process.env.GCF_HOME;
+  return customHome ? path.resolve(expandHome(customHome)) : path.join(os.homedir(), ".gcf");
 }
 
 export function profileDir(): string {
-  return path.join(codexBridgeHome(), "profiles");
+  return path.join(gcfHome(), "profiles");
 }
 
 export function profileIdForRoot(root: string): string {
@@ -66,7 +66,7 @@ export function profilePathForRoot(root: string): string {
 }
 
 export function runtimeDir(): string {
-  return path.join(codexBridgeHome(), "runtime");
+  return path.join(gcfHome(), "runtime");
 }
 
 export function runtimeStatusPathForRoot(root: string): string {
@@ -75,7 +75,7 @@ export function runtimeStatusPathForRoot(root: string): string {
 
 function readJsonFile(filePath: string): unknown {
   try {
-    for (const directory of [codexBridgeHome(), path.dirname(filePath)]) {
+    for (const directory of [gcfHome(), path.dirname(filePath)]) {
       const stat = fs.lstatSync(directory);
       if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("Profile state directory must not be a link.");
     }
@@ -118,7 +118,7 @@ export function saveWorkspaceProfile(root: string, profile: WorkspaceProfile): s
   // Reject links at the configured home and profile directory. Atomic rename
   // avoids following a substituted destination file. This is file hygiene,
   // not an authentication boundary against hostile code running as this UID.
-  const home = codexBridgeHome();
+  const home = gcfHome();
   for (const candidate of [home, dir]) {
     if (!fs.existsSync(candidate)) {
       try { fs.lstatSync(candidate); throw new Error("Profile directory is a dangling link."); }

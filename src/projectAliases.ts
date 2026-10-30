@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { randomUUID } from "node:crypto";
-import { CodexBridgeError } from "./guard.js";
+import { GcfError } from "./guard.js";
 
 // Small local UX metadata store; NOT authorization and NOT an anti-rollback ledger.
 // Only explicitly allowed workspace IDs can be renamed through MCP.
@@ -13,7 +13,7 @@ function validAlias(value: string): string {
   const alias = value.normalize("NFC").trim();
   if (!alias || alias.length > 64 || Buffer.byteLength(alias, "utf8") > 160 ||
     /[\u0000-\u001f\u007f]/u.test(alias)) {
-    throw new CodexBridgeError("Project alias must be 1-64 characters, without control characters.");
+    throw new GcfError("Project alias must be 1-64 characters, without control characters.");
   }
   return alias;
 }
@@ -21,12 +21,12 @@ function validAlias(value: string): string {
 function checkPlainFile(filename: string): void {
   const info = fs.lstatSync(filename);
   if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > MAX_BYTES) {
-    throw new CodexBridgeError("Project alias registry is not a bounded ordinary file.");
+    throw new GcfError("Project alias registry is not a bounded ordinary file.");
   }
 }
 
 export class ProjectAliasRegistry {
-  constructor(private readonly filename: string = path.join(os.homedir(), ".codexbridge", "gpt-codex-flow", "project-aliases.json")) {}
+  constructor(private readonly filename: string = path.join(os.homedir(), ".gcf", "gpt-codex-flow", "project-aliases.json")) {}
 
   read(): Record<string, string> {
     if (!fs.existsSync(this.filename)) return {};
@@ -57,21 +57,21 @@ export class ProjectAliasRegistry {
       }
       return aliases;
     } catch (error) {
-      throw new CodexBridgeError("Project alias registry unreadable or invalid; refusing to guess aliases. " +
+      throw new GcfError("Project alias registry unreadable or invalid; refusing to guess aliases. " +
         (error instanceof Error ? error.message : String(error)));
     }
   }
 
   rename(projectId: string, alias: string, allowedIds: string[]): string {
     if (!allowedIds.includes(projectId)) {
-      throw new CodexBridgeError("Unknown project_id: cannot rename a project outside configured roots.");
+      throw new GcfError("Unknown project_id: cannot rename a project outside configured roots.");
     }
     const cleaned = validAlias(alias);
     const aliases = this.read();
     const matching = Object.entries(aliases).find(([key, value]) =>
       key !== projectId && allowedIds.includes(key) &&
       value.toLocaleLowerCase("en-US") === cleaned.toLocaleLowerCase("en-US"));
-    if (matching) throw new CodexBridgeError("Project alias already belongs to another configured project.");
+    if (matching) throw new GcfError("Project alias already belongs to another configured project.");
     aliases[projectId] = cleaned;
     this.save(aliases);
     return cleaned;
@@ -82,26 +82,26 @@ export class ProjectAliasRegistry {
   recoverAlias(previousProjectId: string, newProjectId: string, expectedAlias: string,
     configuredIds: string[]): string {
     if (configuredIds.includes(previousProjectId)) {
-      throw new CodexBridgeError("Old project is still configured; alias recovery requires a stale project ID.");
+      throw new GcfError("Old project is still configured; alias recovery requires a stale project ID.");
     }
     if (!configuredIds.includes(newProjectId) || previousProjectId === newProjectId) {
-      throw new CodexBridgeError("Destination project is not an explicitly configured root.");
+      throw new GcfError("Destination project is not an explicitly configured root.");
     }
     const aliases = this.read();
     if (!Object.hasOwn(aliases, previousProjectId)) {
-      throw new CodexBridgeError("No saved alias for old project ID.");
+      throw new GcfError("No saved alias for old project ID.");
     }
     const oldName = aliases[previousProjectId];
     if (oldName !== expectedAlias) {
-      throw new CodexBridgeError("Expected old project alias does not match; review source and destination.");
+      throw new GcfError("Expected old project alias does not match; review source and destination.");
     }
     if (Object.hasOwn(aliases, newProjectId)) {
-      throw new CodexBridgeError("Destination already has a saved alias; refusing to overwrite.");
+      throw new GcfError("Destination already has a saved alias; refusing to overwrite.");
     }
     if (Object.entries(aliases).some(([key, value]) =>
       key !== previousProjectId && configuredIds.includes(key) &&
       value.toLocaleLowerCase("en-US") === oldName.toLocaleLowerCase("en-US"))) {
-      throw new CodexBridgeError("Alias collides with a different configured project.");
+      throw new GcfError("Alias collides with a different configured project.");
     }
     delete aliases[previousProjectId];
     aliases[newProjectId] = oldName;
@@ -112,13 +112,13 @@ export class ProjectAliasRegistry {
   private save(aliases: Record<string, string>): void {
     const doc: AliasDocument = { version: 1, aliases };
     const encoded = JSON.stringify(doc, null, 2) + "\n";
-    if (Buffer.byteLength(encoded) > MAX_BYTES) throw new CodexBridgeError("Alias registry too large.");
+    if (Buffer.byteLength(encoded) > MAX_BYTES) throw new GcfError("Alias registry too large.");
     const dir = path.dirname(this.filename);
     // Create only on explicit rename/recovery; listing projects never writes.
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
     const parent = fs.lstatSync(dir);
     if (!parent.isDirectory() || parent.isSymbolicLink()) {
-      throw new CodexBridgeError("Project alias registry parent is not an ordinary directory.");
+      throw new GcfError("Project alias registry parent is not an ordinary directory.");
     }
     if (fs.existsSync(this.filename)) checkPlainFile(this.filename);
     const temp = path.join(dir, `.project-aliases-${randomUUID()}.tmp`);

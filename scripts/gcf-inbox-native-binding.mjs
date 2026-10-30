@@ -83,7 +83,7 @@ export function validateInboxNote(note, selected, {project_id,message_id}) {
 
 export async function loadBinding({project_id,message_id,manifest}) {
   const manifestPath = manifest??path.join(
-    process.env.CODEXBRIDGE_HOME ? path.resolve(process.env.CODEXBRIDGE_HOME) : path.join(os.homedir(),'.codexbridge'),
+    process.env.GCF_HOME ? path.resolve(process.env.GCF_HOME) : path.join(os.homedir(),'.gcf'),
     'gpt-codex-flow','projects.json'
   );
   const approved=readProjectRootsManifest(manifestPath);
@@ -97,8 +97,8 @@ export async function loadBinding({project_id,message_id,manifest}) {
       args:[path.join(repo,'scripts','gcf-cli.mjs'),'start','--transport','stdio',
         '--manifest',manifestPath,'--write','off','--bash','off'],
       cwd:repo,
-      env:{...process.env,CODEXBRIDGE_ALLOW_HOME:'0',
-        CODEXBRIDGE_ALLOWED_ROOTS:'',CODEBASE_BRIDGE_ALLOWED_ROOTS:''}
+      env:{...process.env,GCF_ALLOW_HOME:'0',
+        GCF_ALLOWED_ROOTS:'',CODEBASE_BRIDGE_ALLOWED_ROOTS:''}
     }));
     const selected=await client.callTool({name:'select_project',arguments:{project_id}});
     if (selected.isError || !selected.structuredContent) throw Error('GCF project selection failed.');

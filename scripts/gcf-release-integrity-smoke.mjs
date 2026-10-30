@@ -7,7 +7,7 @@ import ts from 'typescript';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const failures = [];
-const ignored = new Set(['.git', 'node_modules', 'dist', 'output', '.ai-bridge', '.codexbridge']);
+const ignored = new Set(['.git', 'node_modules', 'dist', 'output', '.ai-bridge', '.gcf']);
 function walk(dir) {
   return fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap(entry => {
     if (ignored.has(entry.name) || entry.isSymbolicLink()) return [];
@@ -47,7 +47,27 @@ for (const relative of files.filter(file => /^(src|scripts)\/.*\.(ts|mjs)$/.test
   visit(source);
 }
 
-const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+const packageSource = fs.readFileSync(path.join(root, 'package.json'), 'utf8');
+const lockSource = fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8');
+const pkg = JSON.parse(packageSource);
+const lock = JSON.parse(lockSource);
+// The MCP server advertises a version independently from npm metadata.
+// Keep them aligned before shipping the first formal release.
+const serverSource = fs.readFileSync(path.join(root, 'src/server.ts'), 'utf8');
+const advertisedMcpVersion = serverSource.match(/new McpServer\(\{ name: "GPT Codex Flow", version: "([^"]+)" \}/)?.[1];
+assert.equal(advertisedMcpVersion, pkg.version, 'MCP server version must match package.json');
+const rawBinEntries = source => {
+  const section = source.match(/"bin"\s*:\s*\{([^{}]*)\}/);
+  assert.ok(section, 'Missing package bin declaration');
+  return [...section[1].matchAll(/"([^"]+)"\s*:/g)].map(match => match[1]);
+};
+for (const [source, label] of [[packageSource, 'package.json'], [lockSource, 'package-lock.json']]) {
+  const names = rawBinEntries(source);
+  assert.equal(new Set(names).size, names.length, label + ' has duplicate executable identifiers');
+  assert.equal(names.filter(name => name === 'gcf').length, 1, label + ' must expose a single gcf executable');
+}
+assert.equal(pkg.bin.gcf, 'scripts/gcf-cli.mjs', 'gcf executable must use the documented launcher');
+assert.deepEqual(lock.packages[''].bin, pkg.bin, 'package-lock bin map must match package manifest');
 for (const target of Object.values(pkg.bin)) expectFile(target, 'package.json bin');
 for (const target of pkg.files.filter(file => !file.includes('*'))) expectFile(target, 'package.json files');
 for (const [name, command] of Object.entries(pkg.scripts)) {

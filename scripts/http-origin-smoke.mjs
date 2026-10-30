@@ -28,11 +28,11 @@ const port = await freePort();
 const credential = randomUUID();
 const url = 'http://127.0.0.1:' + port;
 const env = {
-  ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root,
-  CODEXBRIDGE_HOST: '127.0.0.1', CODEXBRIDGE_PORT: String(port),
-  CODEXBRIDGE_HTTP_TOKEN: credential, CODEXBRIDGE_HTTP_AUTH_MODE: 'header-only',
-  CODEXBRIDGE_HTTP_ALLOWED_ORIGINS: 'https://approved.example',
-  CODEXBRIDGE_BASH_MODE: 'off', CODEXBRIDGE_WRITE_MODE: 'off'
+  ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root,
+  GCF_HOST: '127.0.0.1', GCF_PORT: String(port),
+  GCF_HTTP_TOKEN: credential, GCF_HTTP_AUTH_MODE: 'header-only',
+  GCF_HTTP_ALLOWED_ORIGINS: 'https://approved.example',
+  GCF_BASH_MODE: 'off', GCF_WRITE_MODE: 'off'
 };
 const child = spawn(process.execPath, ['dist/http.js'], {
   cwd: process.cwd(), env, stdio: ['ignore', 'ignore', 'pipe']

@@ -101,7 +101,7 @@ async function publishOwnerReceipt({worktree,result,request}) {
       args:[path.join(bridgeRoot,'dist','stdio.js'),'--root',worktree,
         '--allow-root',worktree,'--tool-mode','standard','--write','workspace','--bash','off'],
       cwd:bridgeRoot,
-      env:{...process.env,CODEXBRIDGE_ROOT:worktree,CODEXBRIDGE_ALLOWED_ROOTS:worktree}
+      env:{...process.env,GCF_ROOT:worktree,GCF_ALLOWED_ROOTS:worktree}
     }));
     const discovered=await client.callTool({name:'list_projects',arguments:{}});
     const canonicalRoot=await fs.realpath(worktree);

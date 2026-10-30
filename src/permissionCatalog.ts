@@ -26,8 +26,8 @@ export interface ToolPermissionEntry {
 }
 
 const readOnly = [
-  "server_config", "codexbridge_inventory", "search_skills",
-  "search_agent_profiles", "load_agent_profile", "recommend_orchestrator",
+  "server_config", "gcf_inventory", "search_skills",
+  "search_agent_profiles", "load_agent_profile", "recommend_orchestrator", "get_project_orchestrator_mode",
   "parallel_session_status", "shared_project_state",
   "transfer_status", "task_inbox_list", "task_inbox_read", "load_skill", "list_skill_resources", "read_skill_resource", "list_workspaces", "list_projects", "find_project", "project_summary", "workspace_snapshot",
   "tree", "search", "read", "preview_change_set",
@@ -76,7 +76,7 @@ const catalogEntries: Array<[string, ToolPermissionEntry]> = [
     proposedGrants: ["execution:run"],
     reviewNote: "Executing even an allowlisted command can have side effects; execution policies are not an OS sandbox."
   }),
-  ["codexbridge_self_test", Object.freeze({
+  ["gcf_self_test", Object.freeze({
     effect: "diagnostic-mixed",
     proposedGrants: Object.freeze(["workspace:read", "handoff:write", "execution:run"] as const),
     reviewNote: "Can write/edit a context probe and execute Bash checks, depending on options and runtime policy. Requires operation-level inspection."

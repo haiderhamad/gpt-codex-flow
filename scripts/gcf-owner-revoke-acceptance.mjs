@@ -7,7 +7,7 @@
  * verify:  read-only MCP reconnection check AFTER a human has separately typed
  *          the real "REMOVE LOCAL PROJECT ROOT" consent in a local Terminal.
  *
- * Never creates or updates the real ~/.codexbridge manifest, never deletes repos,
+ * Never creates or updates the real ~/.gcf manifest, never deletes repos,
  * never invokes native Codex, and never issues a postTaskInbox request.
  */
 import assert from 'node:assert/strict';
@@ -28,8 +28,8 @@ const quote=value=>"'"+value.replaceAll("'","'\"'\"'")+"'";
 function callLocal(args) {
   const r=spawnSync(process.execPath,[launcher,...args],{
     cwd:source,encoding:'utf8',timeout:15000,maxBuffer:800000,shell:false,
-    env:{...process.env,CODEXBRIDGE_ALLOWED_ROOTS:'',
-      CODEBASE_BRIDGE_ALLOWED_ROOTS:'',CODEXBRIDGE_ALLOW_HOME:'0'}
+    env:{...process.env,GCF_ALLOWED_ROOTS:'',
+      CODEBASE_BRIDGE_ALLOWED_ROOTS:'',GCF_ALLOW_HOME:'0'}
   });
   return r;
 }
@@ -117,8 +117,8 @@ export async function verifyAcceptance(fixtureArg) {
   if(!result.approved)return result;
   const client=new Client({name:'gcf-m37-owner-positive-revocation',version:'1.0.0'},
     {capabilities:{}});
-  const env={...process.env,CODEXBRIDGE_ALLOWED_ROOTS:'',
-    CODEBASE_BRIDGE_ALLOWED_ROOTS:'',CODEXBRIDGE_ALLOW_HOME:'0'};
+  const env={...process.env,GCF_ALLOWED_ROOTS:'',
+    CODEBASE_BRIDGE_ALLOWED_ROOTS:'',GCF_ALLOW_HOME:'0'};
   try {
     await client.connect(new StdioClientTransport({
       command:process.execPath,

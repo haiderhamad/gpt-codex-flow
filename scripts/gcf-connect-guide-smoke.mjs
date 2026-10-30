@@ -15,7 +15,7 @@ const manifest=path.join(dir,"approved owner's roots.json");
 async function invoke(args){
   return spawnSync(process.execPath,[cli,'connect-guide',...args],{
     cwd:repo,encoding:'utf8',timeout:10000,
-    env:{...process.env,CODEXBRIDGE_HOME:path.join(dir,'other-config')}
+    env:{...process.env,GCF_HOME:path.join(dir,'other-config')}
   });
 }
 try{

@@ -56,7 +56,7 @@ try {
     command: process.execPath,
     args: ['dist/stdio.js', '--root', root, '--allow-root', root, '--tool-mode', 'standard', '--bash', 'off'],
     cwd: process.cwd(),
-    env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root }
+    env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root }
   });
   try {
     await client.connect(transport);

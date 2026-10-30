@@ -31,7 +31,7 @@ fs.mkdirSync(output,{recursive:true});
 const wait=ms=>new Promise(ok=>setTimeout(ok,ms));
 let next=a,server,chrome,ws;
 let cloudState={state:'stopped',message:'Not running'};
-const cloudLauncher={status:()=>({...cloudState}),async start(projects,access){cloudState={state:'tunnel_ready',project:projects[0],projects,access,message:'Fake Cloudflare ready; ChatGPT not verified',serverUrl:'https://owner-fixture.trycloudflare.com/mcp?'+('codexbridge_'+'token')+'=placeholder'};return {...cloudState}},async stop(){cloudState={state:'stopped',message:'Stopped'};return {...cloudState}}};
+const cloudLauncher={status:()=>({...cloudState}),async start(projects,access){cloudState={state:'tunnel_ready',project:projects[0],projects,access,message:'Fake Cloudflare ready; ChatGPT not verified',serverUrl:'https://owner-fixture.trycloudflare.com/mcp?'+('gcf_'+'token')+'=placeholder'};return {...cloudState}},async stop(){cloudState={state:'stopped',message:'Stopped'};return {...cloudState}}};
 const errors=[];
 try {
   server=await startControlCenter({manifest,sourceRoot:process.cwd(),pickFolder:async()=>({cancelled:false,path:next}),approveChange:async()=>true,cloudLauncher});
@@ -130,6 +130,17 @@ try {
   assert.match(await evaluate(`document.getElementById('client-state').textContent`),/not a live session/i);
   await evaluate(`(()=>{const select=document.getElementById('lead-mode');select.value='codex_lead';select.dispatchEvent(new Event('change'));document.getElementById('lead-save').click();return true})()`);
   await until(`document.getElementById('lead-feedback').textContent.includes('Lead saved')&&document.getElementById('lead-save').disabled`);
+  assert.equal(await evaluate(`document.getElementById('codex-model-mode').value`),'default');
+  assert.equal(await evaluate(`document.getElementById('codex-effort').value`),'auto');
+  await evaluate(`(()=>{const mode=document.getElementById('codex-model-mode');mode.value='custom';mode.dispatchEvent(new Event('change'));const input=document.getElementById('codex-model-id');input.value='test-codex';input.dispatchEvent(new Event('input'));const effort=document.getElementById('codex-effort');effort.value='high';effort.dispatchEvent(new Event('change'));document.getElementById('codex-exec-save').click();return true})()`);
+  await until(`document.getElementById('codex-exec-feedback').textContent.includes('Owner settings saved')&&document.getElementById('codex-exec-save').disabled`);
+  assert.equal(await evaluate(`document.getElementById('codex-model-id').value`),'test-codex');
+  assert.equal(await evaluate(`document.getElementById('codex-effort').value`),'high');
+  await evaluate(`(()=>{const s=document.getElementById('lead-project');s.value=${JSON.stringify(b)};s.dispatchEvent(new Event('change'));return true})()`);
+  assert.equal(await evaluate(`document.getElementById('codex-model-mode').value`),'default','Model preferences isolated per project');
+  assert.equal(await evaluate(`document.getElementById('codex-effort').value`),'auto');
+  await evaluate(`(()=>{const s=document.getElementById('lead-project');s.value=${JSON.stringify(a)};s.dispatchEvent(new Event('change'));return true})()`);
+  assert.equal(await evaluate(`document.getElementById('codex-model-id').value`),'test-codex','Selected owner model restores on project switch');
   assert.ok(fs.existsSync(path.join(a,'docs','PROJECT_HISTORY.md')),'New project history must be initialized after owner approval');
   assert.equal(fs.existsSync(path.join(b,'docs','PROJECT_HISTORY.md')),false,'Existing project must not be modified');
   await evaluate(`document.querySelector('#chatgpt-project-guide > summary').click()`);
@@ -223,7 +234,7 @@ try {
     await wait(140);
     const scrubbed=await evaluate(`document.body.innerText`);
     assert.ok(!scrubbed.includes(root)&&!scrubbed.includes(path.basename(root))&&!scrubbed.includes(process.cwd()),'public screenshot must not show local paths');
-    assert.ok(!scrubbed.includes('codexbridge_token='),'public screenshot must not show token');
+    assert.ok(!scrubbed.includes('gcf_token='),'public screenshot must not show token');
     const screenshot=await send('Page.captureScreenshot',{format:'png',fromSurface:true});
     const destination=path.join(process.cwd(),'docs','gcf-preview','screenshots','control-center-demo.png');
     fs.writeFileSync(destination,Buffer.from(screenshot.data,'base64'));

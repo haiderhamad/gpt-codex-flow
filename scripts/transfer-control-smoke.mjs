@@ -33,7 +33,7 @@ try {
     command: process.execPath,
     args: ['dist/stdio.js', '--root', root, '--allow-root', root, '--tool-mode', 'standard', '--write', 'workspace', '--bash', 'off'],
     cwd: process.cwd(),
-    env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root }
+    env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root }
   }));
   // Separate MCP process models a second client reading the same durable transfer record.
   // It is NOT an independently authenticated native Codex process.
@@ -42,7 +42,7 @@ try {
     command: process.execPath,
     args: ['dist/stdio.js', '--root', root, '--allow-root', root, '--tool-mode', 'standard', '--write', 'workspace', '--bash', 'off'],
     cwd: process.cwd(),
-    env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root }
+    env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root }
   }));
   const recipientCall = (name, args = {}) => recipientClient.callTool({ name, arguments: args });
   const names = (await client.listTools()).tools;
@@ -109,7 +109,7 @@ try {
     args: ['dist/stdio.js', '--root', root, '--allow-root', root,
       '--tool-mode', 'standard', '--write', 'workspace', '--bash', 'off'],
     cwd: process.cwd(),
-    env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root }
+    env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root }
   }));
   const resumedCall = (name, args = {}) => client.callTool({ name, arguments: args });
   assert.equal((await resumedCall('task_resume')).structuredContent.task_id, taskId);

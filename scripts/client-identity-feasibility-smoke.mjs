@@ -27,7 +27,7 @@ async function connectAs(url, credential, claimedName) {
     assert.ok(tools.some(item => item.name === 'server_config'));
     const response = await client.callTool({ name: 'server_config', arguments: {} });
     assert.notEqual(response.isError, true);
-    assert.equal(response.structuredContent.codexbridge_tool, 'server_config');
+    assert.equal(response.structuredContent.gcf_tool, 'server_config');
     return { client, transport };
   } catch (error) {
     await client.close();
@@ -41,15 +41,15 @@ const credential = randomUUID();
 const base = 'http://127.0.0.1:' + port;
 const env = {
   ...process.env,
-  CODEXBRIDGE_ROOT: root,
-  CODEXBRIDGE_ALLOWED_ROOTS: root,
-  CODEXBRIDGE_HOST: '127.0.0.1',
-  CODEXBRIDGE_PORT: String(port),
-  CODEXBRIDGE_HTTP_TOKEN: credential,
-  CODEXBRIDGE_HTTP_AUTH_MODE: 'header-only',
-  CODEXBRIDGE_WRITE_MODE: 'off',
-  CODEXBRIDGE_BASH_MODE: 'off',
-  CODEXBRIDGE_TOOL_MODE: 'minimal'
+  GCF_ROOT: root,
+  GCF_ALLOWED_ROOTS: root,
+  GCF_HOST: '127.0.0.1',
+  GCF_PORT: String(port),
+  GCF_HTTP_TOKEN: credential,
+  GCF_HTTP_AUTH_MODE: 'header-only',
+  GCF_WRITE_MODE: 'off',
+  GCF_BASH_MODE: 'off',
+  GCF_TOOL_MODE: 'minimal'
 };
 const child = spawn(process.execPath, ['dist/http.js'], {
   cwd: process.cwd(), env, stdio: ['ignore', 'ignore', 'pipe']

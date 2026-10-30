@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {readOwnerFolders} from './ownerProjectStore.js';
 import {validateProjectRoots} from './projectRootsFile.js';
 import {planOrchestration, type CodexAvailability, type OrchestratorMode} from './orchestrationOps.js';
+import {readOwnerCodexExecutionPreferences,DEFAULT_CODEX_EXECUTION} from './gcfCodexExecutionPreferences.js';
 
 const MODES = ['chatgpt_lead','codex_lead','auto'] as const;
 const VALID_AVAILABILITY = ['unknown','available','rate_limited','context_exhausted','unavailable'] as const;
@@ -43,7 +44,8 @@ function readStored(manifest: string): Record<string,SavedLeadMode> {
 export function ownerLeadSnapshot(manifest: string) {
   const roots=readOwnerFolders(manifest);
   const saved=readStored(manifest);
-  return roots.map(root=>({project:root,name:path.basename(root),mode:saved[root]??'auto'}));
+  const codex=readOwnerCodexExecutionPreferences(manifest);
+  return roots.map(root=>({project:root,name:path.basename(root),mode:saved[root]??'auto',codexExecution:codex[root]??DEFAULT_CODEX_EXECUTION}));
 }
 /** Only the trusted owner-local Control Center can call this from its guarded routes. */
 export function saveOwnerProjectLead(manifest: string, project: string, mode: string, expected: string) {

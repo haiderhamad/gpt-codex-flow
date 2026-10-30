@@ -6,7 +6,7 @@ const NAME = 'gcf-local-control-center';
 async function run(command: string,args: string[],limit=16_384): Promise<{code:number;out:string}> {
   return new Promise((resolve,reject) => {
     const child=spawn(command,args,{shell:false,stdio:['ignore','pipe','pipe'],env:{...process.env,
-      CODEXBRIDGE_ALLOW_HOME:'0',CODEXBRIDGE_ALLOWED_ROOTS:'',CODEBASE_BRIDGE_ALLOWED_ROOTS:''}});
+      GCF_ALLOW_HOME:'0',GCF_ALLOWED_ROOTS:'',CODEBASE_BRIDGE_ALLOWED_ROOTS:''}});
     let out='',error='';const timer=setTimeout(()=>child.kill(),20_000);
     child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
     child.stdout.on('data',part=>{out+=part;if(out.length>limit)child.kill();});

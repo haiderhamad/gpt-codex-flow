@@ -8,11 +8,19 @@ The project derives from MIT-licensed [naplesblue/codexbridge](https://github.co
 
 Both ChatGPT and Codex are coding-capable peers. A ChatGPT lead may implement and run permitted tests; Codex may plan and review. Skills provide instructions; agent profiles alone do not spawn model workers.
 
+## Handoff and durable Notion memory are distinct — 28 October 2026
+
+**DECIDED, reinforced 2026-10-28:** Handoff, `shared_project_state`, `task_resume`, Task Inbox and Transfer Control are **core, always-on GCF capabilities**, fully independent of optional Notion setup/connection. No Notion preference, missing/invalid marker, plugin outage, OAuth or failed documentation write may gate, downgrade or block GCF Handoff. When Notion is not opted in, agents must skip it silently, including pending-sync warnings. When it is opted in but unavailable, report only documentation pending while continuing the task. Preserve existing GCF `shared_project_state`, `task_resume`, Task Inbox and Transfer Control as the only live-task continuity/handoff mechanisms. Notion is optional, independently authorized long-term project knowledge; it must not become another inbox, task queue, progress journal or automatic background service. Agents resume from GCF, validate evidence against Git/code/tests, read only relevant Notion topic pages, then consolidate durable decisions with rationale, architectural/security invariants, verified reusable findings or material milestones **only when changed**. Deduplicate and update existing records; mark superseded decisions explicitly. No new service, data store or `/resume` tool is required. See the maintained `.agents/skills/gcf-notion-memory/SKILL.md` and `src/gcfNotionMemory.ts`. Guidance can influence active agents but cannot guarantee future Notion writes. Canonical Notion ADR-006 is on the existing project Decisions & Risks page.
+
 ## Lead, transfer and authorization are distinct
 
 ChatGPT Lead, Codex Lead and Auto — Recommend are advisory choices. Transfer Control is a separate correlated request/accept/cancel workflow. Neither a selected role, caller-reported availability, Inbox note, `user_confirmed` field nor mutable SQLite/file history grants native execution permission or authenticates a principal.
 
 Execution policy is separate: supervised owner-local execution, an owner-started bounded Local Auto worker, or a separately attended unsafe Full Access action. Recommendations never silently create sessions, read provider quota, bypass account limits or switch consumer models.
+
+## Saved Lead preference visibility — 27 October 2026
+
+Owner-local Dashboard modes persist privately beside the approved project manifest. The read-only `get_project_orchestrator_mode` MCP endpoint returns the mode only for a selected configured workspace when its server was launched with trusted owner manifest context. It does not expose other projects' choices, modify settings, confer execution rights, or mount owner-administration routes. Other MCP starts explicitly report unavailable rather than assuming Auto.
 
 ## Owner-local control plane — 20 October 2026
 

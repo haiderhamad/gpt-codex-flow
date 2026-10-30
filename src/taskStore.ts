@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-import type { CodexBridgeConfig } from "./config.js";
+import type { GcfConfig } from "./config.js";
 import type { Workspace } from "./guard.js";
 import { PathGuard } from "./guard.js";
 
@@ -36,11 +36,11 @@ export function newTaskId(): string {
   return `task_${randomUUID()}`;
 }
 
-function activeTaskPath(config: CodexBridgeConfig): string {
+function activeTaskPath(config: GcfConfig): string {
   return `${config.contextDir}/current-task.json`;
 }
 
-function archiveTaskPath(config: CodexBridgeConfig, taskId: string): string {
+function archiveTaskPath(config: GcfConfig, taskId: string): string {
   return `${config.contextDir}/tasks/${taskId}.json`;
 }
 
@@ -70,7 +70,7 @@ function isTaskRecord(value: unknown): value is TaskRecord {
   );
 }
 
-export function readActiveTask(config: CodexBridgeConfig, guard: PathGuard, workspace: Workspace): TaskRecord | null {
+export function readActiveTask(config: GcfConfig, guard: PathGuard, workspace: Workspace): TaskRecord | null {
   const resolved = guard.resolve(workspace, activeTaskPath(config));
   if (!fs.existsSync(resolved.absPath)) return null;
   try {
@@ -83,14 +83,14 @@ export function readActiveTask(config: CodexBridgeConfig, guard: PathGuard, work
   }
 }
 
-export function activeTaskSummary(config: CodexBridgeConfig, guard: PathGuard, workspace: Workspace): ActiveTaskSummary | null {
+export function activeTaskSummary(config: GcfConfig, guard: PathGuard, workspace: Workspace): ActiveTaskSummary | null {
   const record = readActiveTask(config, guard, workspace);
   if (!record || record.status !== "in_progress") return null;
   return { task_id: record.task_id, goal: record.goal, created_at: record.created_at };
 }
 
 async function writeArchive(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   record: TaskRecord,
@@ -105,7 +105,7 @@ async function writeArchive(
 }
 
 export async function writeActiveTask(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   input: TaskWriteInput
@@ -132,7 +132,7 @@ export async function writeActiveTask(
 }
 
 export async function archiveActiveTask(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   status: "complete" | "abandoned"

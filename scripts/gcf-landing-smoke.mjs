@@ -34,9 +34,7 @@ for (const asset of ["theme-light.css", "brand-mark.svg", "architecture-light.sv
   assert.ok(site.includes("./" + asset), `missing site link to ${asset}`);
   assert.ok(existsSync(resolve(base, asset)), `broken local asset ${asset}`);
 }
-for (const asset of ["architecture-light.svg", "use-case-flow.svg"]) {
-  assert.ok(readme.includes("gcf-preview/" + asset), `README must reference ${asset}`);
-}
+assert.ok(readme.includes("gcf-preview/architecture-overview.gif"), "README must reference the shipped architecture-overview.gif");
 for (const svg of [architecture, useCases, logo]) {
   assert.match(svg, /^<svg\b/);
   assert.match(svg.trim(), /<\/svg>$/);

@@ -61,7 +61,7 @@ try{
   const {makeProjectRootsManifest}=await import('../dist/projectRootsFile.js');
   fs.writeFileSync(configFile,JSON.stringify(makeProjectRootsManifest([git]))+'\n',{mode:0o600});
   const listed=spawnSync(process.execPath,['scripts/gcf-cli.mjs','projects','list'],{
-    cwd:repo,env:{...process.env,CODEXBRIDGE_HOME:configHome},
+    cwd:repo,env:{...process.env,GCF_HOME:configHome},
     encoding:'utf8',timeout:10000});
   assert.equal(listed.status,0,listed.stderr);
   assert.equal(JSON.parse(listed.stdout).projects[0].root,git);

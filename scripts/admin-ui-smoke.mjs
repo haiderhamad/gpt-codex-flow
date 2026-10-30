@@ -10,8 +10,8 @@ const netServer=net.createServer();
 await new Promise(resolve=>netServer.listen(0,'127.0.0.1',resolve));
 const port=netServer.address().port;
 await new Promise(resolve=>netServer.close(resolve));
-const env={...process.env,CODEXBRIDGE_ROOT:root,CODEXBRIDGE_ALLOWED_ROOTS:root,CODEXBRIDGE_HOST:'127.0.0.1',CODEXBRIDGE_PORT:String(port),CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN:'1',CODEXBRIDGE_WRITE_MODE:'off',CODEXBRIDGE_BASH_MODE:'off'};
-delete env.CODEXBRIDGE_HTTP_TOKEN;delete env.CODEBASE_BRIDGE_HTTP_TOKEN;
+const env={...process.env,GCF_ROOT:root,GCF_ALLOWED_ROOTS:root,GCF_HOST:'127.0.0.1',GCF_PORT:String(port),GCF_ALLOW_NO_HTTP_TOKEN:'1',GCF_WRITE_MODE:'off',GCF_BASH_MODE:'off'};
+delete env.GCF_HTTP_TOKEN;delete env.CODEBASE_BRIDGE_HTTP_TOKEN;
 const child=spawn(process.execPath,['dist/http.js'],{cwd:process.cwd(),env,stdio:'ignore'});
 const origin='http://127.0.0.1:'+port;
 try{

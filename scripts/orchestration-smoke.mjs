@@ -44,10 +44,21 @@ const transport = new StdioClientTransport({
   command: process.execPath,
   args: ['dist/stdio.js', '--root', root, '--allow-root', root, '--tool-mode', 'standard', '--bash', 'off'],
   cwd: process.cwd(),
-  env: { ...process.env, CODEXBRIDGE_ROOT: root, CODEXBRIDGE_ALLOWED_ROOTS: root }
+  env: { ...process.env, GCF_ROOT: root, GCF_ALLOWED_ROOTS: root }
 });
 try {
   await client.connect(transport);
+  const mcpInstructions=client.getInstructions();
+  assert.match(mcpInstructions,/Notion Project Memory is OPTIONAL/);
+  assert.match(mcpInstructions,/read AGENTS\.md first/);
+  assert.match(mcpInstructions,/enabled NOTION_MEMORY\.md/);
+  assert.match(mcpInstructions,/official Notion plugin\/MCP/);
+  assert.match(mcpInstructions,/Notion Project Memory is OPTIONAL/);
+  assert.match(mcpInstructions,/SKIP all Notion actions and pending-sync warnings/);
+  assert.match(mcpInstructions,/continue all GCF work and report NOTION_SYNC_PENDING/);
+  assert.match(mcpInstructions,/shared_project_state and task_resume/);
+  assert.match(mcpInstructions,/never mirror transient handoffs/);
+  assert.match(mcpInstructions,/consolidate without duplication/);
   const tool = (await client.listTools()).tools.find((entry) => entry.name === 'recommend_orchestrator');
   assert.ok(tool);
   assert.equal(tool.annotations?.readOnlyHint, true);
@@ -96,4 +107,39 @@ try {
   await client.close();
   await fs.rm(root, { recursive: true, force: true });
 }
-console.log('Orchestration recommendation and MCP integration tests passed');
+// Owner-local manifest bridge: persisted Dashboard selection must be visible only on an approved workspace.
+const ownerRoot=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'gcf-owner-lead-mcp-')));
+const projectA=path.join(ownerRoot,'approved-a'),projectB=path.join(ownerRoot,'approved-b');
+await fs.mkdir(projectA);await fs.mkdir(projectB);
+const ownerDir=path.join(ownerRoot,'private');await fs.mkdir(ownerDir);
+const manifest=path.join(ownerDir,'projects.json');
+await fs.writeFile(manifest,JSON.stringify({version:1,roots:[projectA,projectB]}));
+const prefs=path.join(ownerDir,'gcf-lead-preferences.json');
+await fs.writeFile(prefs,JSON.stringify({version:1,modes:{[projectA]:'codex_lead',[projectB]:'chatgpt_lead'}}),{mode:0o600});
+async function checkLead(ownerContext) {
+  const c=new Client({name:'owner-lead-smoke',version:'1.0.0'},{capabilities:{}});
+  const t=new StdioClientTransport({command:process.execPath,args:['dist/stdio.js','--root',projectA,'--allow-root',projectA,'--tool-mode','standard','--bash','off'],cwd:process.cwd(),
+    env:{...process.env,GCF_ROOT:projectA,GCF_ALLOWED_ROOTS:projectA,
+      GCF_OWNER_LEAD_MANIFEST:ownerContext?manifest:''}});
+  try{
+    await c.connect(t);
+    const tool=(await c.listTools()).tools.find(x=>x.name==='get_project_orchestrator_mode');
+    assert.ok(tool);assert.equal(tool.annotations?.readOnlyHint,true);
+    const selected=await c.callTool({name:'get_project_orchestrator_mode',arguments:{workspace_id:projectA}});
+    // Workspace IDs are opaque and must be taken from the configured project listing.
+    assert.equal(selected.isError,true);
+    const projects=await c.callTool({name:'list_projects',arguments:{}});
+    const projectId=projects.structuredContent.projects[0].project_id;
+    const opened=await c.callTool({name:'select_project',arguments:{project_id:projectId}});
+    const id=opened.structuredContent.workspace_id;
+    const result=await c.callTool({name:'get_project_orchestrator_mode',arguments:{workspace_id:id}});
+    assert.equal(result.isError,undefined);
+    assert.equal(result.structuredContent.mode,ownerContext?'codex_lead':null,JSON.stringify({result:result.structuredContent,projects:projects.structuredContent,opened:opened.structuredContent,projectA,manifest}));
+    assert.equal(result.structuredContent.available,ownerContext);
+    assert.ok(!JSON.stringify(result.structuredContent).includes('chatgpt_lead'),'Other approved project selection is not disclosed');
+    const missing=await c.callTool({name:'get_project_orchestrator_mode',arguments:{}});
+    assert.equal(missing.isError,true);
+  }finally{await c.close();}
+}
+try{await checkLead(true);await checkLead(false);}finally{await fs.rm(ownerRoot,{recursive:true,force:true});}
+console.log('Orchestration recommendation and saved Dashboard Lead MCP integration tests passed');

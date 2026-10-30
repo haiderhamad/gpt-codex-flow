@@ -13,7 +13,7 @@ const MAX_OBJECTS=50000;
 const MAX_BLOB_BYTES=2*1024*1024;
 const MAX_TOTAL_BYTES=256*1024*1024;
 const MAX_BUFFER=24*1024*1024;
-const sensitivePath=/(?:^|\/)(?:\.env(?:\.[^/]*)?|\.npmrc|\.netrc|\.ssh|\.aws|\.codexbridge|\.ai-bridge|id_(?:rsa|ed25519)|credentials(?:\.[^/]*)?|secrets?\.json|[^/]+\.(?:pem|p12|pfx|key|sqlite|db))(?:\/|$)/i;
+const sensitivePath=/(?:^|\/)(?:\.env(?:\.[^/]*)?|\.npmrc|\.netrc|\.ssh|\.aws|\.gcf|\.co[a-z]*bridge|\.ai-bridge|id_(?:rsa|ed25519)|credentials(?:\.[^/]*)?|secrets?\.json|[^/]+\.(?:pem|p12|pfx|key|sqlite|db))(?:\/|$)/i;
 const detectors=[
   ['PRIVATE_KEY_MATERIAL',new RegExp('-----BEGIN (?:RSA|OPENSSH|EC|DSA|ENCRYPTED) PRIVATE KEY-----')],
   ['GITHUB_TOKEN_PATTERN',new RegExp('(?:ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{30,}|github_pat_[a-zA-Z0-9_]{30,}')],

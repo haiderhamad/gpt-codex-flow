@@ -99,7 +99,7 @@ try {
     command:process.execPath,
     args:[path.join(repo,'scripts','gcf-cli.mjs'),'start','--manifest',manifest,'--transport','stdio','--write','off','--bash','off'],
     cwd:repo,
-    env:{...process.env,CODEXBRIDGE_ALLOW_HOME:'1',CODEXBRIDGE_ROOT:workspaceA}
+    env:{...process.env,GCF_ALLOW_HOME:'1',GCF_ROOT:workspaceA}
   }));
   const tools=(await client.listTools()).tools;
   for(const name of ['list_skill_resources','read_skill_resource']){

@@ -56,7 +56,7 @@ async function privateDirectory(directory, create=false){
 async function stateDirectory(root,create=false){
   const home=await fs.realpath(os.homedir());
   let directory=home;
-  for(const part of ['.codexbridge','gcf-auto-workers',createHash('sha256').update(root).digest('hex')]){
+  for(const part of ['.gcf','gcf-auto-workers',createHash('sha256').update(root).digest('hex')]){
     directory=path.join(directory,part);await privateDirectory(directory,create);
   }
   return directory;

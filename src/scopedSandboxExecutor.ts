@@ -122,7 +122,7 @@ export async function executeScopedSandbox(request: ScopedExecutionRequest): Pro
   if (!Number.isSafeInteger(maxOutputBytes) || maxOutputBytes < 1024 || maxOutputBytes > 131_072) {
     throw new Error("Output cap must be 1,024–131,072 bytes.");
   }
-  const base = await mkdtemp(path.join(os.homedir(), "codexbridge-scoped-exec-"));
+  const base = await mkdtemp(path.join(os.homedir(), "gcf-scoped-exec-"));
   const codexHome = path.join(base, "codex-home");
   const start = Date.now();
   try {

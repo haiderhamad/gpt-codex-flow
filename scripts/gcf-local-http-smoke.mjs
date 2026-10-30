@@ -48,8 +48,8 @@ try {
   })+'\n',{mode:0o600});
   const port=await freePort();
   const ephemeral=randomBytes(32).toString('hex');
-  const env={...process.env,CODEXBRIDGE_HTTP_TOKEN:ephemeral,
-    CODEXBRIDGE_ALLOW_HOME:'1',CODEXBRIDGE_ALLOWED_ROOTS:temp,
+  const env={...process.env,GCF_HTTP_TOKEN:ephemeral,
+    GCF_ALLOW_HOME:'1',GCF_ALLOWED_ROOTS:temp,
     NO_COLOR:'1'};
   const command=[launcher,'start','--manifest',manifest,
     '--transport','http','--port',String(port)];

@@ -6,9 +6,11 @@
   <img src="https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white" alt="Node.js 20 or newer">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/MCP-supported-267C91" alt="Model Context Protocol (MCP)">
+  <a href="package.json"><img src="https://img.shields.io/badge/Version-v1.0.0-267C91" alt="Unreleased source candidate v1.0.0"></a>
+  <a href="https://haiderhamad.github.io/gpt-codex-flow/"><img src="https://img.shields.io/badge/Website-GitHub%20Pages-267C91?logo=githubpages&logoColor=white" alt="Visit GPT Codex Flow website"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-546A7B" alt="MIT license"></a>
 </p>
-<p align="center"><a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#security">Security</a> · <a href="#troubleshooting">Troubleshooting</a></p>
+<p align="center"><a href="https://haiderhamad.github.io/gpt-codex-flow/">Official Website</a> · <a href="#quick-start">Quick Start</a> · <a href="#features">Features</a> · <a href="#security">Security</a> · <a href="#troubleshooting">Troubleshooting</a></p>
 
 <p align="center"><img src="docs/gcf-preview/architecture-overview.gif" width="640" height="460" alt="Illustrative loop: ChatGPT hands a task through GPT Codex Flow to Codex App and CLI, then a result returns through GCF"></p>
 
@@ -35,6 +37,18 @@ npm ci
 
 Run these commands in Terminal. `npm ci` uses the repository's `package-lock.json`, so it must run **inside the cloned `gpt-codex-flow` folder**, not from your home directory (`~`).
 
+### Optional: install or update Codex CLI
+
+**Codex CLI is not needed** to start the Control Center or connect ChatGPT. Install it only if you want to execute owner-approved local Codex handoffs. For an npm-managed installation (new or existing), use:
+
+```bash
+npm install -g @openai/codex@latest
+codex --version
+codex
+```
+
+The final `codex` command opens its interactive sign-in flow; follow the prompts to sign in with an account that can use Codex. On macOS, if your existing Codex installation is managed through Homebrew instead, use `brew install --cask codex` for the first installation or `brew upgrade --cask codex` to update it. **Use the same package manager as your existing installation** rather than creating conflicting copies. See the [official Codex install instructions](https://github.com/openai/codex#installing-and-running-codex-cli). GCF does not install or update Codex automatically, and selecting a Lead or saving a model preference does not launch Codex.
+
 ### 3. Start the Control Center
 
 From the same `gpt-codex-flow` folder, run:
@@ -51,7 +65,7 @@ In the Control Center, open **Projects**, choose **Add Folder**, select the fold
 
 ### 5. Connect ChatGPT
 
-**Cloudflare Quick Tunnel is the only supported user-facing connection.** Go to **Connections → Connect ChatGPT** in the Control Center:
+**Cloudflare Quick Tunnel is the only supported user-facing connection.** It is a temporary development/testing tunnel, not production hosting; Cloudflare does not guarantee uptime ([Cloudflare Quick Tunnel docs](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/)). Go to **Connections → Connect ChatGPT** in the Control Center:
 
 1. Select your approved project(s) and the connection access level; start with **Read Only**.
 2. Choose **Start Cloudflare** and approve the **local** confirmation. Wait until the Control Center shows **Cloudflare tunnel ready**.
@@ -73,6 +87,32 @@ In the Control Center, open **Projects**, choose **Add Folder**, select the fold
 **Full Access is not available through the one-click Cloudflare UI.** Use only the permissions required for your task. **Handoff notes remain writable in every access level**, including Read Only, but notes do not grant code editing or command execution. ChatGPT's approvals do not override the permission level selected here.
 
 <p align="center"><img src="docs/gcf-preview/screenshots/control-center-demo.png" width="800" alt="Example of the GPT Codex Flow local Control Center"></p>
+
+## Optional agent-assisted Notion project memory
+
+Notion project memory is **optional, off by default, and independent from GCF Handoff**. It can be enabled for a **brand-new project, an existing development folder being added now, or a project already registered with GCF**. Nothing about your earlier code, Git commits, `AGENTS.md` or `.ai-bridge/` handoffs is overwritten.
+
+**Enable it later:** Open **Control Center → Projects**, find an approved folder, click **Enable Notion Memory**, and confirm the local operation. GCF creates a project-root `NOTION_MEMORY.md` *instruction template* only when safe and absent; existing or invalid Notion instructions are preserved, not replaced. A native owner confirmation is required. Alternatively, during **Add Folder** you can opt into the template, or paste the copy-only Notion instructions into your existing `AGENTS.md` yourself using **Connections → ChatGPT Project Instructions**. GCF never edits your `AGENTS.md`; for reliable discovery by Codex when GCF is disconnected, copy the short `AGENTS.md` pointer shown in that Connections section. This project-local marker is **not** a Notion connection or proof that a Notion page already exists.
+
+**Connect and reuse existing knowledge:** Authorize the official Notion integration independently in the ChatGPT/Codex client that will do the work. Set `notion_page_url` in the template when you already know your project page; otherwise supply an explicitly approved `notion_parent_url` (for example your existing software-projects parent page). The agent should review your current README, source and durable decisions, search within that approved Notion scope by **project name and repository identity**, and reuse the matching canonical project page. If no page exists it must **ask for authorization before creating one** under the approved parent. If matches are ambiguous or no parent has been approved, it must ask rather than create a duplicate. With explicit project-specific permission to create pages under that parent, it can bootstrap **one** missing project hub and only the necessary subpages; if no page-creation permission is granted, it asks first. It then writes a **concise, evidence-checked initial project snapshot**, not old transcripts or the entire codebase. Readback is required before claiming a remote write succeeded.
+
+**Readable project knowledge, not just AI logs:** The hub starts with a clear human-readable overview and links to useful topic pages (Product, Architecture, Decisions, Quality/Evidence and optional Roadmap, References, Archive). Each page provides a short summary and, where relevant, verified technical facts, source-relative code paths, decision rationale, dates and evidence. Agents can add compact **Mermaid diagrams** to Notion code blocks to explain verified architecture or flows, with text descriptions for accessibility. On projects with older Notion notes, the agent **reuses the existing project hub**, inspects its subpages and improves navigation before considering any relocation. Substantial cleanup requires owner approval and a verified archival copy; no existing child pages, attachments or decisions may be silently deleted. The [Project Hub Layout](.agents/skills/gcf-notion-memory/references/PROJECT_HUB_LAYOUT.md) describes these rules with an example flowchart.
+
+**What is automated?** Only reminders to active agents: the per-project instructions copied from Control Center or `gcf chat-guide`, plus GCF MCP instructions, tell them when to read project guidance. A local file does not launch a background worker, search Notion by itself or authorize an account. If Notion is opted in but the client is disconnected, GCF work continues and only Notion documentation is `NOTION_SYNC_PENDING`; when Notion is not opted in, no sync warning should appear. Re-copy updated ChatGPT Project Instructions after upgrades and reconnect MCP clients to load new server instructions. The living knowledge stays in Notion; current task status and handoffs stay in GCF. See the [Notion Memory Skill](.agents/skills/gcf-notion-memory/SKILL.md) and [Project Hub Layout](.agents/skills/gcf-notion-memory/references/PROJECT_HUB_LAYOUT.md).
+
+**Notion is optional — Handoff is not.** When a user never enables Notion, or when Notion is unavailable, offline, or authorization fails, GCF Task Inbox, Transfer Control, `task_resume` and all normal handoff functions must work unchanged. No Notion setup is required, and there should be no pending-sync warning unless the project explicitly opted in. The Notion feature must never gate, delay or reduce GCF permissions or task functionality.
+
+**Task continuity is not Notion memory.** GCF's existing `shared_project_state`, `task_resume`, Task Inbox and Transfer Control remain the source for active tasks, execution progress and handoffs. An opted-in agent reads only the relevant Notion hub/topic for lasting context; after a *material* verified decision, architectural change, reusable root-cause lesson or significant product milestone, it checks that topic for duplicates and consolidates the durable fact in place. Mere agent transfers, temporary TODOs, ordinary test runs and session logs stay in GCF, not a second Notion handoff database. The [Notion Memory Skill](.agents/skills/gcf-notion-memory/SKILL.md) and its [layout guide](.agents/skills/gcf-notion-memory/references/PROJECT_HUB_LAYOUT.md) describe this boundary. This is an agent workflow instruction, **not** an automatic sync service.
+
+To use Notion with **local Codex**, connect its official MCP in your own Codex session (account authorization is user-managed, not stored by GCF):
+
+```bash
+codex mcp add notion --url https://mcp.notion.com/mcp
+codex mcp login notion
+codex mcp list
+```
+
+The `codex mcp login notion` step requires your interactive OAuth approval. Independent Notion updates with GCF disconnected also require the agent to have local file access. The read-only, opt-in live Codex file-discovery test is `npm run test:gcf-notion-codex-offline`; it intentionally does **not** test remote Notion writes or run in ordinary smoke suites.
 
 ## Troubleshooting
 
@@ -103,7 +143,9 @@ In the Control Center, open **Projects**, choose **Add Folder**, select the fold
 
 Ordinary native Codex tasks request `workspace-write` with sandbox network disabled. The native **Codex sandbox** does not cover independent MCP file/Bash tools. Codex `--full-access` is a separate owner-attended high-risk option and prohibited in Local Auto. The local Control Center is never exposed via the public tunnel.
 
-**ChatGPT Lead**, **Codex Lead** and **Auto — Recommend** are advisory choices. **Transfer Control** records a handoff; accepting one does not grant execution permissions or start a model. GCF does not synchronize hidden conversations, bypass account limits, authenticate model identity, provide a multi-item backlog, or install an OS login service. Windows-native sandbox containment remains unverified.
+**ChatGPT Lead**, **Codex Lead** and **Auto — Recommend** are advisory choices. The per-project preference is stored privately next to the owner manifest. Owner-started MCP connections can read it using `get_project_orchestrator_mode`, but cannot alter it; standalone MCP sessions without trusted owner context report it unavailable. **Transfer Control** records a handoff; accepting one does not grant execution permissions or start a model. GCF does not synchronize hidden conversations, bypass account limits, authenticate model identity, provide a multi-item backlog, or install an OS login service. Windows-native sandbox containment remains unverified.
+
+**Codex Model and Reasoning — per-project owner settings:** Open **Control Center → Workflow**, choose an approved project, select a **Codex model** (`Runner default` or a manually entered ID) and **Reasoning** (`Model default`, Low, Medium, High, Extra High), then press **Save Codex execution settings**. This is **separate from Codex Lead** and cannot be changed by MCP agents. Preferences are kept in the private owner-local `gcf-codex-execution-preferences.json` next to the manifest (not inside the public project). **Inspect Codex execution readiness** shows the exact owner-reviewed Terminal command with `--model` and `--effort` flags when set; the runner forwards them to Codex CLI using `--model` and `model_reasoning_effort`. Saved preferences do not run a model, grant write permissions, or select a model in other Codex sessions. For safety, this runner uses `--ignore-user-config`: the **Runner default is not necessarily your `~/.codex/config.toml` selection**. Model ID existence, subscription entitlement and the model actually served are not auto-verified. The owner-launched Local Auto worker has independent startup `--model`/`--effort` options and does **not** silently inherit these Dashboard settings.
 
 See [security policy and release boundaries](SECURITY.md), [Codex sandbox decision](docs/GCF_NATIVE_SANDBOX_V1_DECISION.md) and [feature evidence](docs/GCF_FEATURES_SOURCE_OF_TRUTH.md).
 
@@ -123,6 +165,21 @@ npm run test:gcf-release-integrity
 If you move to a different computer, install the dependencies again, reapprove your project folders, and reconnect ChatGPT using a new private tunnel URL. Your credentials, ignored `.ai-bridge/` records, local configuration and uncommitted work are **not** included in a Git clone; back up anything you need separately.
 
 For source contributions see [CONTRIBUTING.md](CONTRIBUTING.md). For more detail see the [architecture decisions](docs/GCF_PROJECT_HISTORY.md). GitHub Pages contains only the static Landing, not the local Control Center.
+
+## Upgrade compatibility
+
+The GCF naming cleanup changes CLI entry points, MCP tool identifiers, environment variables, and local configuration paths. This is a **breaking change for previous installations**, not a silent in-place upgrade.
+
+- **Keep a backup first:** preserve any existing `~/.codexbridge/` owner configuration and per-project `.ai-bridge/` task/inbox data. Back up private configuration securely; do **not** upload credentials or token-bearing URLs to GitHub or copy them into this repository.
+- **Use the new installer:** install from the GCF repository with `npm ci`, then run `npm run gcf:ui` (or `gcf ui` when the CLI is correctly installed). Reapprove the intended project roots in the Control Center. The `gcf` executable is `scripts/gcf-cli.mjs`; the other GCF launcher is retained for internal compatibility helpers and is **not** a second `gcf` bin.
+- **Reconnect clients:** replace old `codexbridge` executable references, `codexbridge_*` MCP tool IDs, `codexbridge_token` query parameters, and `CODEXBRIDGE_*` environment overrides with the GCF equivalents. Reissue a connection URL/token instead of reusing one from an old session. The owner configuration default now uses `~/.gcf/` and the environment prefix is `GCF_*`.
+- **Do not overwrite or auto-migrate:** project-local `.ai-bridge/` tasks and handoffs remain owned by their repository, independent of optional Notion. Leave old state untouched until its contents and the new connection are verified. A clean install does **not** restore ignored state or credentials automatically.
+
+For first-time installs, no migration is necessary. The current local test suite covers a fresh GCF launcher and package manifest; it does **not** prove that every older user installation can be migrated automatically.
+
+## Privacy before public source releases
+
+Source files, npm package metadata, GitHub repository links and **Git commit metadata** are distinct privacy surfaces. A new clean release candidate does not remove author names or email addresses from an already public GitHub history. Before any push, review the destination account/organization and use a Git author identity approved by the owner (an intentionally public address or a GitHub noreply address). The project's existing public GitHub links identify its account owner; publishing anonymously requires a separate owner-approved destination. Never commit personal machine paths, token-bearing URLs, `.env` files or the ignored per-project `.ai-bridge/` history. Private state stays on the user's machine; GitHub is not a backup for it.
 
 ## License
 

@@ -11,8 +11,10 @@ import {chatgptQuickConnectReadiness} from './gcfQuickConnectReadiness.js';
 import {inspectOwnerProjectHandoff} from './gcfTaskHandoffStatus.js';
 import {previewOwnerCodexHandoff} from './gcfNativeHandoffBridge.js';
 import {ownerLeadSnapshot,saveOwnerProjectLead,previewProjectTaskRouting} from './gcfLeadPreferences.js';
+import {saveOwnerCodexExecutionPreferences} from './gcfCodexExecutionPreferences.js';
 import {projectHistoryPath,freshProjectFolder,initializeProjectHistory} from './gcfProjectHistory.js';
 import {chatgptProjectInstructions} from './gcfProjectGuidance.js';
+import {initializeNotionMemory,notionMemoryStatus,optionalNotionAgentsBlock,optionalNotionPointerBlock} from './gcfNotionMemory.js';
 import {createCloudflareLauncher,type CloudLauncher,type CloudAccess} from './gcfCloudflareLauncher.js';
 
 const secret = () => randomBytes(32).toString('hex');
@@ -32,7 +34,7 @@ export async function startControlCenter(options: {manifest: string; port?: numb
   let session = '', csrf = '', expires = 0;
   let lastCodexTestAt = 0;
   let foldersChangedThisSession = false;
-  const cloud=options.cloudLauncher??createCloudflareLauncher(options.sourceRoot);
+  const cloud=options.cloudLauncher??createCloudflareLauncher(options.sourceRoot,{leadManifest:options.manifest});
   let cloudActionInProgress=false;
   const picked = new Map<string,{path:string;expires:number}>();
   let windowStart = Date.now(), requests = 0;
@@ -84,7 +86,7 @@ export async function startControlCenter(options: {manifest: string; port?: numb
     try {
       const roots = snapshot();
       res.json({sourceDirectory:options.sourceRoot, manifest:options.manifest, projects:roots.map(root => {
-        try {validateProjectRoots([root]); return {path:root,name:path.basename(root),status:'ready',git:fs.existsSync(path.join(root,'.git')),history:projectHistoryPath(root)};}
+        try {validateProjectRoots([root]); return {path:root,name:path.basename(root),status:'ready',git:fs.existsSync(path.join(root,'.git')),history:projectHistoryPath(root),notionMemory:notionMemoryStatus(root)};}
         catch {return {path:root,name:path.basename(root),status:fs.existsSync(root)?'attention':'missing',git:false};}
       }), issue:roots.length ? '' : 'Add a folder to begin.',
       controlCenter:'Running on loopback', mcp:cloud.status().state==='tunnel_ready'?'Owner-started Cloudflare tunnel ready (ChatGPT unverified)':'No cloud client connection verified',
@@ -102,16 +104,17 @@ export async function startControlCenter(options: {manifest: string; port?: numb
       const ticket = secret();
       picked.clear();
       picked.set(ticket,{path:result.path,expires:Date.now()+5*60_000});
-      res.json({cancelled:false,path:result.path,name:path.basename(result.path),ticket,newProject:freshProjectFolder(result.path),history:projectHistoryPath(result.path)});
+      res.json({cancelled:false,path:result.path,name:path.basename(result.path),ticket,newProject:freshProjectFolder(result.path),history:projectHistoryPath(result.path),notionMemory:notionMemoryStatus(result.path)});
     } catch (error) {res.status(400).json({error:error instanceof Error?error.message:'Could not open the folder picker.'});}
   });
   app.post('/owner/projects', async (req,res) => {
     try {
       const body = req.body ?? {};
-      if (!['add','remove','replace'].includes(body.action) || Object.keys(body).some(key => !['action','path','previous','ticket','access','initializeHistory'].includes(key)))
+      if (!['add','remove','replace'].includes(body.action) || Object.keys(body).some(key => !['action','path','previous','ticket','access','initializeHistory','initializeNotionMemory'].includes(key)))
         throw Error('Choose Add, Remove, or Replace.');
       if (body.access !== undefined && body.access !== 'read') throw Error('This connection supports Read Only. Advanced access needs separate local authorization.');
       if(body.initializeHistory!==undefined && (body.action!=='add'||typeof body.initializeHistory!=='boolean'))throw Error('Project history can only be initialized for a newly added folder.');
+      if(body.initializeNotionMemory!==undefined && (body.action!=='add'||typeof body.initializeNotionMemory!=='boolean')) throw Error('Notion memory can only be initialized when adding a folder.');
       const before = snapshot();
       if (body.action === 'add' && before.some(root => !fs.existsSync(root)))
         throw Error('Remove or replace the missing folder first.');
@@ -143,9 +146,15 @@ export async function startControlCenter(options: {manifest: string; port?: numb
         const added=next.find(root=>!before.includes(root));
         if(added)try{history=initializeProjectHistory(added);}catch(error){historyError=error instanceof Error?error.message:String(error);}
       }
+      let notionMemory=null;
+      let notionError;
+      if(body.action==='add' && body.initializeNotionMemory===true){
+        const added=next.find(root=>!before.includes(root));
+        if(added)try{notionMemory=initializeNotionMemory(added);}catch(error){notionError=error instanceof Error?error.message:String(error);}
+      }
       lastCodexTestAt = 0;
       foldersChangedThisSession = true;
-      res.json({saved:true,history,historyError,backupCreated:Boolean(result.backup),restartRequired:true,
+      res.json({saved:true,history,historyError,notionMemory,notionError,backupCreated:Boolean(result.backup),restartRequired:true,
         projects:next.map(root => ({path:root,name:path.basename(root),status:fs.existsSync(root)?'ready':'missing'}))});
     } catch (error) {res.status(400).json({error:error instanceof Error?error.message:'Could not save the folder list.'});}
   });
@@ -172,18 +181,45 @@ export async function startControlCenter(options: {manifest: string; port?: numb
       if(body.action==='save' && Object.keys(body).sort().join(',')==='action,expected,mode,project') {
         res.json(saveOwnerProjectLead(options.manifest,body.project,body.mode,body.expected));return;
       }
+      if(body.action==='save_codex' && Object.keys(body).sort().join(',')==='action,effort,expectedEffort,expectedModel,model,project') {
+        res.json(saveOwnerCodexExecutionPreferences(options.manifest,body.project,body.model,body.effort,body.expectedModel,body.expectedEffort));return;
+      }
       if(body.action==='preview' && Object.keys(body).every(key=>['action','project','goal','availability'].includes(key))) {
         res.json(previewProjectTaskRouting(options.manifest,body.project,body.goal,body.availability));return;
       }
       throw Error('Invalid workflow request.');
     }catch(error){res.status(400).json({error:error instanceof Error?error.message:'Workflow unavailable.'});}
   });
+  // Owner-local, explicitly approved opt-in for a folder already in the manifest.
+  // Never contacts Notion, changes the manifest, or modifies AGENTS.md / task data.
+  app.post('/owner/project-notion-memory', async (req,res) => {
+    try {
+      const body=req.body??{};
+      if(Object.keys(body).length!==1 || typeof body.project!=='string' || !body.project)
+        throw Error('Select one approved project.');
+      const project=body.project;
+      if(!snapshot().includes(project)) throw Error('This project is not in your approved folders.');
+      validateProjectRoots([project]);
+      const current=notionMemoryStatus(project);
+      if(current.status==='invalid') throw Error('Existing Notion instructions are invalid or unsafe; no files were changed.');
+      if(current.enabled) {res.json({state:'existing',notionMemory:current,pointer:current.source==='file'?optionalNotionPointerBlock():null,remoteSyncVerified:false});return;}
+      const approved=await (options.approveChange ?? (async()=>!(await nativeFolderDialog('enable-notion')).cancelled))();
+      if(!approved) {res.json({cancelled:true});return;}
+      // Recheck after the native dialog; refuse changed roots or unsafe files.
+      if(!snapshot().includes(project)) throw Error('The approved project list changed. Refresh and retry.');
+      validateProjectRoots([project]);
+      const created=initializeNotionMemory(project);
+      res.json({...created,notionMemory:notionMemoryStatus(project),pointer:optionalNotionPointerBlock(),remoteSyncVerified:false});
+    } catch(error) {
+      res.status(400).json({error:error instanceof Error?error.message:'Cannot enable optional Notion Memory.'});
+    }
+  });
   app.get('/owner/project-instructions', (req,res) => {
     try {
       const project=req.headers['x-gcf-project'];
       if(typeof project!=='string'||!snapshot().includes(project)) throw Error('Select an approved project.');
       validateProjectRoots([project]);
-      res.json({project,name:path.basename(project),template:chatgptProjectInstructions(project),history:projectHistoryPath(project)});
+      res.json({project,name:path.basename(project),template:chatgptProjectInstructions(project),history:projectHistoryPath(project),notionMemory:notionMemoryStatus(project),optionalAgentsBlock:optionalNotionAgentsBlock(),optionalNotionPointerBlock:optionalNotionPointerBlock()});
     }catch(error){res.status(400).json({error:error instanceof Error?error.message:'Project unavailable.'});}
   });
   app.get('/owner/connections', async (_req,res) => {

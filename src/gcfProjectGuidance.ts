@@ -4,13 +4,13 @@ export function chatgptProjectInstructions(root:string):string {
   const name=path.basename(root);
   const text=`This ChatGPT Project covers the approved repository "${name}" at "${root}".
 
-At the start of a task, connect through GPT Codex Flow MCP, list projects and select this exact approved root/ID. Never guess or switch roots silently.
+Start via GPT Codex Flow MCP: list_projects and select_project for the exact approved root/ID. Read lead_preference or get_project_orchestrator_mode(workspace_id); Lead is advisory, never permission. Never silently switch projects.
 
-Before coding, read applicable AGENTS.md (including nested rules), README.md and docs/PROJECT_HISTORY.md if present. Read shared_project_state/project_summary for recorded work, but verify source, Git and tests.
+Before substantial work, read AGENTS.md and applicable nested instructions. If AGENTS.md points to NOTION_MEMORY.md, read it. Also check whether NOTION_MEMORY.md exists even without a pointer; follow it when enabled or use the owner-pasted Notion block in AGENTS.md. These rules survive GCF disconnect when local files remain accessible.
 
-Discover task-relevant Agent profiles in .codex/agents/*.toml or *.md and Skills in .codex/skills/ or .agents/skills/ (or approved global locations). Use search_agent_profiles/search_skills and load only selected profile instructions/SKILL.md with approved tools. Repository rules take precedence. Never load the entire catalog, execute bundled scripts by default or assume a loaded profile runs an agent. Delegate only if supported and authorized.
+Always use shared_project_state, task_resume and relevant Task Inbox for GCF handoffs; never gate them on Notion. Notion disabled: skip it silently. Only if opted in, use this client's authorized official Notion plugin/MCP for durable decisions/milestones after deduplication. If unavailable, report NOTION_SYNC_PENDING but continue GCF normally. Never mirror handoffs.
 
-Report which profiles and Skills were consulted, and which were inaccessible; distinguish consulted profiles from executed agents. Preserve unrelated changes, never store secrets, and do not push, deploy or elevate access without owner approval.`;
+Read README.md and docs/PROJECT_HISTORY.md when present; verify Git/code/tests. Load only relevant .codex/ and .agents/ Skills/profiles with approved tools; instructions do not start agents. Preserve unrelated edits and secrets. No push, deployment or access elevation without owner approval.`;
   if(text.length>1500) throw Error('Project instructions exceeded the 1,500-character target.');
   return text;
 }

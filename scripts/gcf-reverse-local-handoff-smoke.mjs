@@ -40,8 +40,8 @@ async function connect(name,write='handoff'){
     command:process.execPath,
     args:[cli,'start','--manifest',manifest,'--transport','stdio','--write',write,'--bash','off'],
     cwd:repo,
-    env:{...process.env,CODEXBRIDGE_ALLOWED_ROOTS:foreign,
-      CODEBASE_BRIDGE_ALLOWED_ROOTS:foreign,CODEXBRIDGE_ALLOW_HOME:'1',CODEXBRIDGE_ROOT:foreign}
+    env:{...process.env,GCF_ALLOWED_ROOTS:foreign,
+      CODEBASE_BRIDGE_ALLOWED_ROOTS:foreign,GCF_ALLOW_HOME:'1',GCF_ROOT:foreign}
   }));
   clients.push(client);
   return client;

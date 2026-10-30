@@ -1,4 +1,4 @@
-import type { CodexBridgeConfig } from "./config.js";
+import type { GcfConfig } from "./config.js";
 import { readRuntimeConnection } from "./profileStore.js";
 
 /**
@@ -21,7 +21,7 @@ function canonicalOrigin(value: string, allowLoopbackHttp = true): string | null
   }
 }
 
-export function configuredHttpOrigins(config: CodexBridgeConfig): readonly string[] {
+export function configuredHttpOrigins(config: GcfConfig): readonly string[] {
   const candidates = [
     `http://127.0.0.1:${config.port}`,
     `http://localhost:${config.port}`,
@@ -36,12 +36,12 @@ export function configuredHttpOrigins(config: CodexBridgeConfig): readonly strin
       // Ignore a malformed runtime endpoint; it grants no extra origin.
     }
   }
-  const explicit = process.env.CODEXBRIDGE_HTTP_ALLOWED_ORIGINS?.trim();
+  const explicit = process.env.GCF_HTTP_ALLOWED_ORIGINS?.trim();
   if (explicit) {
     for (const value of explicit.split(",")) {
       const origin = value.trim();
       if (!canonicalOrigin(origin, true)) {
-        throw new Error("CODEXBRIDGE_HTTP_ALLOWED_ORIGINS must contain only exact origins (HTTPS or loopback HTTP), no wildcards or paths.");
+        throw new Error("GCF_HTTP_ALLOWED_ORIGINS must contain only exact origins (HTTPS or loopback HTTP), no wildcards or paths.");
       }
       candidates.push(origin);
     }

@@ -3,9 +3,19 @@ import {promisify} from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import {inspectOwnerProjectHandoff} from './gcfTaskHandoffStatus.js';
+import {readOwnerCodexExecutionPreferences,DEFAULT_CODEX_EXECUTION} from './gcfCodexExecutionPreferences.js';
 const exec=promisify(execFile);
 const UUID=/^transfer_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const quote=(value:string)=>"'"+value.replaceAll("'","'\\''")+"'";
+/** Builds the exact explicit owner-reviewed command, never runs Codex. */
+export function ownerCodexHandoffCommand(manifest:string,project:string) {
+  const stored=readOwnerCodexExecutionPreferences(manifest);
+  const configured=stored[project]??DEFAULT_CODEX_EXECUTION;
+  const flags=(configured.model?' --model '+quote(configured.model):'')+
+    (configured.effort!=='auto'?' --effort '+quote(configured.effort):'');
+  return {command:'npm run gcf:handoff-run -- --worktree '+quote(project)+flags+' --run --return-to-inbox',
+    model:configured.model,effort:configured.effort};
+}
 /**
  * Owner-local ONLY. Bridges a previously accepted task transfer to the existing
  * native Codex runner's non-executing --preview. Does not accept arbitrary
@@ -28,7 +38,7 @@ export async function previewOwnerCodexHandoff(manifest:string, project:string, 
   try {
     const result=await exec(process.execPath,[script,'--worktree',project,'--preview'],{
       cwd:realRoot,timeout:20000,maxBuffer:60000,windowsHide:true,shell:false,
-      env:{...process.env,CODEXBRIDGE_LOG_TOOL_CALLS:'0'}
+      env:{...process.env,GCF_LOG_TOOL_CALLS:'0'}
     });
     raw=result.stdout;
   } catch {
@@ -43,12 +53,18 @@ export async function previewOwnerCodexHandoff(manifest:string, project:string, 
      preview.broker_authorized!==false||!Array.isArray(allowed)||
      !allowed.every(a=>typeof a==='string'&&a.length>0))
     throw Error('Codex handoff failed local safety checks.');
-  const command='npm run gcf:handoff-run -- --worktree '+quote(project)+' --run --return-to-inbox';
+  // Owner-selected per-project preferences are passed as reviewed CLI flags.
+  // This never executes Codex. The runner itself ignores global Codex user config.
+  const {command,model,effort}=ownerCodexHandoffCommand(manifest,project);
   return {
     project,task_id:summary.active_task.task_id,transfer_id:handoff.id,
     allowed_paths:allowed as string[],
     status:'OWNER_TERMINAL_CONSENT_REQUIRED' as const,
     owner_terminal_command:command,
+    requested_model:model,requested_reasoning_effort:effort,
+    model_selection_source:model?'saved_owner_project':'runner_default',
+    reasoning_selection_source:effort==='auto'?'runner_default':'saved_owner_project',
+    codex_user_config_loaded:false,model_applied:false,reasoning_applied:false,
     instructions:'Open Terminal yourself in the GPT Codex Flow source folder, review the exact target and command, and type the required consent phrase. The browser cannot execute this task.',
     preview_only:true,model_called:false,owner_action_required:true,
     exec_started:false,auto_execution:false,full_access:false,

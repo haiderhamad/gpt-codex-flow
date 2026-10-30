@@ -50,8 +50,8 @@ async function probe(permission, cwd, destination) {
 
 // Two fresh, unrelated directories under HOME, not inside the real repository.
 // This avoids macOS's intentionally writable temporary-directory exceptions.
-const workspace = await mkdtemp(join(homedir(), 'codexbridge-sandbox-work-'));
-const outside = await mkdtemp(join(homedir(), 'codexbridge-sandbox-outside-'));
+const workspace = await mkdtemp(join(homedir(), 'gcf-sandbox-work-'));
+const outside = await mkdtemp(join(homedir(), 'gcf-sandbox-outside-'));
 try {
   const readOnlyTarget = join(workspace, 'denied-readonly.txt');
   const deniedReadOnly = await probe('read-only', workspace, readOnlyTarget);

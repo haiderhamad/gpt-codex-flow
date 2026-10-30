@@ -2,7 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { CodexBridgeConfig } from "./config.js";
+import type { GcfConfig } from "./config.js";
 import type { Workspace } from "./guard.js";
 import { PathGuard } from "./guard.js";
 import { readTextFile, repoTree, ensureAiBridge } from "./fsOps.js";
@@ -114,7 +114,7 @@ async function findAgentsFilesInDir(workspace: Workspace, dir: string): Promise<
 }
 
 async function readAgentsChain(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   targetPath: string,
@@ -148,7 +148,7 @@ async function readAgentsChain(
 }
 
 export async function workspaceSummary(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   options: { includeTree?: boolean; maxDepth?: number; maxEntries?: number; bootstrapContext?: boolean; includeSkills?: boolean; includeGlobalSkills?: boolean } = {}
@@ -205,7 +205,7 @@ export async function workspaceSummary(
 }
 
 export async function readAiBridgeContext(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   options: { createIfMissing?: boolean } = {}
@@ -248,7 +248,7 @@ export async function readAiBridgeContext(
 }
 
 export async function readCodexContext(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   guard: PathGuard,
   workspace: Workspace,
   options: {

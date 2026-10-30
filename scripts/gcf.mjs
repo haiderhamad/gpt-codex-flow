@@ -18,15 +18,15 @@ Use gcf ui for owner-local setup and Cloudflare Quick Tunnel access.
 Cloudflare Quick Tunnel is the only supported public connection.
 
 Usage:
-  codexbridge init --root /path/to/repo
-  codexbridge start --root /path/to/repo --tunnel cloudflare
-  codexbridge settings show|list|set|use|delete
-  codexbridge doctor
-  codexbridge install-cloudflared
-  codexbridge execute-handoff --agent codex --dry-run
-  codexbridge watch-handoff --agent codex
-  codexbridge pro-bundle --root /path/to/repo --copy
-  codexbridge pro-apply --root /path/to/repo --file plan.md
+  gcf init --root /path/to/repo
+  gcf start --root /path/to/repo --tunnel cloudflare
+  gcf settings show|list|set|use|delete
+  gcf doctor
+  gcf install-cloudflared
+  gcf execute-handoff --agent codex --dry-run
+  gcf watch-handoff --agent codex
+  gcf pro-bundle --root /path/to/repo --copy
+  gcf pro-apply --root /path/to/repo --file plan.md
 
 Connection options:
   --root <dir>              Explicit workspace root.
@@ -261,13 +261,13 @@ function commandAvailableFromRoot(command, root) {
   return executableFileExists(resolved);
 }
 
-function codexBridgeHome() {
-  const customHome = process.env.CODEXBRIDGE_HOME;
-  return customHome ? path.resolve(expandHome(customHome)) : path.join(os.homedir(), '.codexbridge');
+function gcfHome() {
+  const customHome = process.env.GCF_HOME;
+  return customHome ? path.resolve(expandHome(customHome)) : path.join(os.homedir(), '.gcf');
 }
 
 function profileDir() {
-  return path.join(codexBridgeHome(), 'profiles');
+  return path.join(gcfHome(), 'profiles');
 }
 
 function profileIdForRoot(root) {
@@ -279,7 +279,7 @@ function profilePathForRoot(root) {
 }
 
 function runtimeDir() {
-  return path.join(codexBridgeHome(), 'runtime');
+  return path.join(gcfHome(), 'runtime');
 }
 
 function runtimeStatusPathForRoot(root) {
@@ -353,7 +353,7 @@ function saveRuntimeConnection(root, details, options = {}) {
     updatedAt: new Date().toISOString(),
     endpoint: details.endpoint,
     localBase: options.localBase ?? '',
-    localStatusUrl: details.localStatusUrl ? details.localStatusUrl.replace(/(gcf_token|codexbridge_token)=[^&]+/, '$1=<redacted>') : '',
+    localStatusUrl: details.localStatusUrl ? details.localStatusUrl.replace(/(gcf_token|gcf_token)=[^&]+/, '$1=<redacted>') : '',
     tunnel: options.tunnel ?? '',
     mode: options.mode ?? '',
     bash: options.bash ?? '',
@@ -437,8 +437,8 @@ function validateBashSession(value) {
 }
 
 function bashSessionOptions(args, profile = {}) {
-  const bashSession = validateBashSession(optionValue(args, profile, 'bashSession', ['CODEXBRIDGE_BASH_SESSION_ID'], ''));
-  const requireBashSession = optionBool(args, profile, 'requireBashSession', ['CODEXBRIDGE_REQUIRE_BASH_SESSION'], false);
+  const bashSession = validateBashSession(optionValue(args, profile, 'bashSession', ['GCF_BASH_SESSION_ID'], ''));
+  const requireBashSession = optionBool(args, profile, 'requireBashSession', ['GCF_REQUIRE_BASH_SESSION'], false);
   if (requireBashSession && !bashSession) {
     throw new Error('--require-bash-session requires --bash-session <id>.');
   }
@@ -446,13 +446,13 @@ function bashSessionOptions(args, profile = {}) {
 }
 
 function bashTranscriptOption(args, profile = {}) {
-  const value = optionValue(args, profile, 'bashTranscript', ['CODEXBRIDGE_BASH_TRANSCRIPT'], 'compact');
+  const value = optionValue(args, profile, 'bashTranscript', ['GCF_BASH_TRANSCRIPT'], 'compact');
   if (value === 'compact' || value === 'full') return value;
   throw new Error('--bash-transcript must be compact or full.');
 }
 
 function codexSessionsOption(args, profile = {}) {
-  const value = optionValue(args, profile, 'codexSessions', ['CODEXBRIDGE_CODEX_SESSIONS'], 'off');
+  const value = optionValue(args, profile, 'codexSessions', ['GCF_CODEX_SESSIONS'], 'off');
   if (value === 'off' || value === 'metadata' || value === 'read') return value;
   throw new Error('--codex-sessions must be off, metadata, or read.');
 }
@@ -466,7 +466,7 @@ function cloudflaredBinName() {
 }
 
 function localCloudflaredPath() {
-  return path.join(codexBridgeHome(), 'bin', cloudflaredBinName());
+  return path.join(gcfHome(), 'bin', cloudflaredBinName());
 }
 
 function cloudflaredReleaseAsset() {
@@ -508,7 +508,7 @@ function findFileByName(root, fileName) {
 
 async function downloadFile(url, destination) {
   const response = await fetch(url, {
-    headers: { 'user-agent': 'codexbridge-launcher' }
+    headers: { 'user-agent': 'gcf-launcher' }
   });
   if (!response.ok) {
     throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
@@ -532,12 +532,12 @@ async function installCloudflaredLocal() {
   const asset = cloudflaredReleaseAsset();
   const installPath = localCloudflaredPath();
   const binDir = path.dirname(installPath);
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codexbridge-cloudflared-'));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gcf-cloudflared-'));
   const url = `https://github.com/cloudflare/cloudflared/releases/latest/download/${asset.file}`;
 
   fs.mkdirSync(binDir, { recursive: true, mode: 0o700 });
-  console.error(`[codexbridge] Installing cloudflared locally: ${installPath}`);
-  console.error(`[codexbridge] Downloading official Cloudflare release: ${asset.file}`);
+  console.error(`[gcf] Installing cloudflared locally: ${installPath}`);
+  console.error(`[gcf] Downloading official Cloudflare release: ${asset.file}`);
 
   try {
     if (asset.archive) {
@@ -564,7 +564,7 @@ async function installCloudflaredLocal() {
 
     if (process.platform !== 'win32') fs.chmodSync(installPath, 0o755);
     verifyCloudflared(installPath);
-    console.error('[codexbridge] cloudflared installed successfully.');
+    console.error('[gcf] cloudflared installed successfully.');
     return installPath;
   } finally {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
@@ -587,7 +587,7 @@ async function resolveCloudflared(args) {
       verifyCloudflared('cloudflared');
       return 'cloudflared';
     } catch (error) {
-      console.error(`[codexbridge] cloudflared in PATH failed --version; trying local install. ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`[gcf] cloudflared in PATH failed --version; trying local install. ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -598,7 +598,7 @@ async function resolveCloudflared(args) {
       return localPath;
     } catch (error) {
       if (args.noInstallCloudflared) return localPath;
-      console.error(`[codexbridge] Existing ${localPath} failed --version; reinstalling. ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`[gcf] Existing ${localPath} failed --version; reinstalling. ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -644,7 +644,7 @@ function portInUseHelp(host, port) {
     'If you want two repositories running at the same time, each one needs its own local port.',
     '',
     'For Quick Tunnel start the second repository with:',
-    '  codexbridge start --port 8788',
+    '  gcf start --port 8788',
     '',
   ].join('\n');
 }
@@ -683,7 +683,7 @@ function spawnLogged(name, command, args, options = {}) {
     while (logLines.length > 120) logLines.shift();
     if (verbose) stream.write(`[${name}] ${text}`);
   };
-  child.codexbridgeLogTail = () => logLines.join('\n');
+  child.gcfLogTail = () => logLines.join('\n');
   spawnedChildren.add(child);
   child.stdout.on('data', (chunk) => record(process.stdout, chunk));
   child.stderr.on('data', (chunk) => record(process.stderr, chunk));
@@ -740,7 +740,7 @@ function endpointWithToken(endpoint, token) {
 }
 
 function normalizeMode(args) {
-  const mode = args.mode ?? envValue('CODEXBRIDGE_MODE') ?? 'agent';
+  const mode = args.mode ?? envValue('GCF_MODE') ?? 'agent';
   if (!['agent', 'handoff', 'pro'].includes(mode)) {
     throw new Error('--mode must be agent, handoff, or pro');
   }
@@ -983,7 +983,7 @@ function runProjectInit(argv) {
 }
 
 function contextDirFromArgs(args) {
-  return args.contextDir ?? envValue('CODEXBRIDGE_CONTEXT_DIR') ?? '.ai-bridge';
+  return args.contextDir ?? envValue('GCF_CONTEXT_DIR') ?? '.ai-bridge';
 }
 
 function resolveWorkspaceFile(root, relativePath) {
@@ -1082,7 +1082,7 @@ function applyCommandTemplate(value, replacements) {
 
 function buildExecutorCommand(args, root, planPath, planText) {
   const agent = String(args.agent ?? 'opencode').trim().toLowerCase();
-  const model = String(args.model ?? envValue('CODEXBRIDGE_AGENT_MODEL') ?? '').trim();
+  const model = String(args.model ?? envValue('GCF_AGENT_MODEL') ?? '').trim();
   const replacements = {
     model,
     plan_file: planPath,
@@ -1187,7 +1187,7 @@ function runProcessCaptured(command, args, options) {
     child.on('close', (exitCode, signal) => {
       clearTimeout(timer);
       const out = trimBytes(stdout, maxOutputBytes);
-      const err = trimBytes(`${stderr}${timedOut ? `\n[codexbridge] Command timed out after ${timeoutMs} ms.` : ''}`, maxOutputBytes);
+      const err = trimBytes(`${stderr}${timedOut ? `\n[gcf] Command timed out after ${timeoutMs} ms.` : ''}`, maxOutputBytes);
       resolve({
         exitCode,
         signal,
@@ -1289,12 +1289,12 @@ async function confirmLocalExecution(args, root, commandInfo) {
 }
 
 function loadHandoffExecution(args) {
-  const root = realDir(args.root ?? envValue('CODEXBRIDGE_ROOT') ?? process.cwd());
+  const root = realDir(args.root ?? envValue('GCF_ROOT') ?? process.cwd());
   const contextDir = contextDirFromArgs(args);
   const bridgeDir = resolveWorkspaceFile(root, contextDir);
   const planPath = path.join(bridgeDir, 'current-plan.md');
-  const maxReadBytes = numberOption(envValue('CODEXBRIDGE_MAX_READ_BYTES'), 180_000, 4_000, 2_000_000);
-  const maxOutputBytes = numberOption(args.maxOutputBytes ?? envValue('CODEXBRIDGE_MAX_OUTPUT_BYTES'), 120_000, 4_000, 2_000_000);
+  const maxReadBytes = numberOption(envValue('GCF_MAX_READ_BYTES'), 180_000, 4_000, 2_000_000);
+  const maxOutputBytes = numberOption(args.maxOutputBytes ?? envValue('GCF_MAX_OUTPUT_BYTES'), 120_000, 4_000, 2_000_000);
   const timeoutMs = numberOption(args.timeoutMs ?? args.timeout, 600_000, 1_000, 24 * 60 * 60_000);
   if (!fs.existsSync(planPath)) {
     throw new Error(`No handoff plan found at ${path.relative(root, planPath)}. Ask ChatGPT to call handoff_to_agent first.`);
@@ -1436,7 +1436,7 @@ async function runWatchHandoff(argv) {
     usage();
     return;
   }
-  const root = realDir(args.root ?? envValue('CODEXBRIDGE_ROOT') ?? process.cwd());
+  const root = realDir(args.root ?? envValue('GCF_ROOT') ?? process.cwd());
   const contextDir = contextDirFromArgs(args);
   const bridgeDir = resolveWorkspaceFile(root, contextDir);
   const planPath = path.join(bridgeDir, 'current-plan.md');
@@ -1634,13 +1634,13 @@ function printControlHelp() {
 function printModeHelp() {
   console.log('');
   console.log('Modes');
-  console.log('  codexbridge start                 agent mode: read/write/edit/search/bash');
-  console.log('  codexbridge start --no-bash       agent mode without ChatGPT-triggered shell commands');
-  console.log('  codexbridge start --bash-session main --require-bash-session');
-  console.log('  codexbridge start --mode handoff  planning-only .ai-bridge handoff');
-  console.log('  codexbridge start --mode pro      export context for models without MCP tools');
-  console.log('  codexbridge start --tool-mode minimal   expose only the tight coding loop');
-  console.log('  codexbridge start --tool-mode full      expose every advanced compatibility tool');
+  console.log('  gcf start                 agent mode: read/write/edit/search/bash');
+  console.log('  gcf start --no-bash       agent mode without ChatGPT-triggered shell commands');
+  console.log('  gcf start --bash-session main --require-bash-session');
+  console.log('  gcf start --mode handoff  planning-only .ai-bridge handoff');
+  console.log('  gcf start --mode pro      export context for models without MCP tools');
+  console.log('  gcf start --tool-mode minimal   expose only the tight coding loop');
+  console.log('  gcf start --tool-mode full      expose every advanced compatibility tool');
   console.log('');
 }
 
@@ -1682,16 +1682,16 @@ async function runDoctor(argv) {
     return;
   }
 
-  const root = realDir(args.root ?? envValue('CODEXBRIDGE_ROOT') ?? process.cwd());
+  const root = realDir(args.root ?? envValue('GCF_ROOT') ?? process.cwd());
   const profile = args.noProfile ? {} : loadWorkspaceProfile(root);
   const effectiveArgs = { ...profile, ...args };
-  const tunnel = optionValue(args, profile, 'tunnel', ['CODEXBRIDGE_TUNNEL'], 'cloudflare');
-  const host = optionValue(args, profile, 'host', ['CODEXBRIDGE_HOST'], '127.0.0.1');
-  const port = String(optionValue(args, profile, 'port', ['CODEXBRIDGE_PORT'], '8787'));
-  const mode = optionValue(args, profile, 'mode', ['CODEXBRIDGE_MODE'], 'agent');
-  const bash = optionValue(args, profile, 'bash', ['CODEXBRIDGE_BASH_MODE'], 'safe');
-  const write = optionValue(args, profile, 'write', ['CODEXBRIDGE_WRITE_MODE'], mode === 'agent' ? 'workspace' : 'handoff');
-  const toolMode = optionValue(args, profile, 'toolMode', ['CODEXBRIDGE_TOOL_MODE'], 'standard');
+  const tunnel = optionValue(args, profile, 'tunnel', ['GCF_TUNNEL'], 'cloudflare');
+  const host = optionValue(args, profile, 'host', ['GCF_HOST'], '127.0.0.1');
+  const port = String(optionValue(args, profile, 'port', ['GCF_PORT'], '8787'));
+  const mode = optionValue(args, profile, 'mode', ['GCF_MODE'], 'agent');
+  const bash = optionValue(args, profile, 'bash', ['GCF_BASH_MODE'], 'safe');
+  const write = optionValue(args, profile, 'write', ['GCF_WRITE_MODE'], mode === 'agent' ? 'workspace' : 'handoff');
+  const toolMode = optionValue(args, profile, 'toolMode', ['GCF_TOOL_MODE'], 'standard');
   const httpPath = path.join(projectRoot, 'dist', 'http.js');
   const serverPath = path.join(projectRoot, 'dist', 'server.js');
   const cloudflaredPath = localOrPathCommand(
@@ -1732,7 +1732,7 @@ async function runDoctor(argv) {
   if (tunnel === 'none') {
     record('ok', 'Tunnel', 'local-only mode');
   } else if (tunnel === 'cloudflare') {
-    record(cloudflaredPath ? 'ok' : 'warn', 'cloudflared', cloudflaredPath || 'missing now; codexbridge start can auto-install unless --no-install-cloudflared is used');
+    record(cloudflaredPath ? 'ok' : 'warn', 'cloudflared', cloudflaredPath || 'missing now; gcf start can auto-install unless --no-install-cloudflared is used');
   } else {
     record('fail', 'Tunnel', `unknown tunnel mode: ${tunnel}`);
   }
@@ -1767,7 +1767,7 @@ function printProfile(root, profile) {
     printBox('GPT Codex Flow settings', [
       labelValue('Workspace', root),
       'No saved settings for this workspace.',
-      'Run codexbridge settings set to save Cloudflare Quick Tunnel settings.'
+      'Run gcf settings set to save Cloudflare Quick Tunnel settings.'
     ]);
     return;
   }
@@ -1790,7 +1790,7 @@ function printProfileList(profiles = listWorkspaceProfiles()) {
   if (!profiles.length) {
     printBox('GPT Codex Flow saved setups', [
       'No saved workspace settings found.',
-      'Run codexbridge settings set to create one.'
+      'Run gcf settings set to create one.'
     ]);
     return;
   }
@@ -1798,19 +1798,19 @@ function printProfileList(profiles = listWorkspaceProfiles()) {
 }
 
 function saveSettingsFromArgs(root, args, profile) {
-  const tunnel = optionValue(args, profile, 'tunnel', ['CODEXBRIDGE_TUNNEL'], profile.tunnel ?? 'cloudflare');
+  const tunnel = optionValue(args, profile, 'tunnel', ['GCF_TUNNEL'], profile.tunnel ?? 'cloudflare');
   if (tunnel !== 'cloudflare') throw new Error('Only Cloudflare Quick Tunnel settings are supported.');
-  const mode = optionValue(args, profile, 'mode', ['CODEXBRIDGE_MODE'], profile.mode ?? 'agent');
-  const toolMode = optionValue(args, profile, 'toolMode', ['CODEXBRIDGE_TOOL_MODE'], profile.toolMode ?? '');
-  const widgetDomain = optionValue(args, profile, 'widgetDomain', ['CODEXBRIDGE_WIDGET_DOMAIN'], profile.widgetDomain ?? '');
-  const port = String(optionValue(args, profile, 'port', ['CODEXBRIDGE_PORT'], profile.port ?? '8787'));
+  const mode = optionValue(args, profile, 'mode', ['GCF_MODE'], profile.mode ?? 'agent');
+  const toolMode = optionValue(args, profile, 'toolMode', ['GCF_TOOL_MODE'], profile.toolMode ?? '');
+  const widgetDomain = optionValue(args, profile, 'widgetDomain', ['GCF_WIDGET_DOMAIN'], profile.widgetDomain ?? '');
+  const port = String(optionValue(args, profile, 'port', ['GCF_PORT'], profile.port ?? '8787'));
   const bashTranscript = bashTranscriptOption(args, profile);
   const codexSessions = codexSessionsOption(args, profile);
-  const codexDir = optionValue(args, profile, 'codexDir', ['CODEXBRIDGE_CODEX_DIR'], profile.codexDir ?? '');
+  const codexDir = optionValue(args, profile, 'codexDir', ['GCF_CODEX_DIR'], profile.codexDir ?? '');
   const { bashSession, requireBashSession } = bashSessionOptions(args, profile);
   const token = tunnel === 'none'
-    ? optionValue(args, profile, 'token', ['CODEXBRIDGE_HTTP_TOKEN', 'CODEBASE_BRIDGE_HTTP_TOKEN'], profile.token ?? '')
-    : stableToken(optionValue(args, profile, 'token', ['CODEXBRIDGE_HTTP_TOKEN', 'CODEBASE_BRIDGE_HTTP_TOKEN'], profile.token ?? ''));
+    ? optionValue(args, profile, 'token', ['GCF_HTTP_TOKEN', 'CODEBASE_BRIDGE_HTTP_TOKEN'], profile.token ?? '')
+    : stableToken(optionValue(args, profile, 'token', ['GCF_HTTP_TOKEN', 'CODEBASE_BRIDGE_HTTP_TOKEN'], profile.token ?? ''));
   const savedPath = saveWorkspaceProfile(root, {
     port,
     mode,
@@ -1850,7 +1850,7 @@ async function runSettings(argv) {
     usage();
     return;
   }
-  const root = realDir(args.root ?? envValue('CODEXBRIDGE_ROOT') ?? process.cwd());
+  const root = realDir(args.root ?? envValue('GCF_ROOT') ?? process.cwd());
   const profile = args.noProfile ? {} : loadWorkspaceProfile(root);
 
   if (action === 'list' || action === 'ls') {
@@ -1880,7 +1880,7 @@ async function runSettings(argv) {
         rl.close();
       }
     } else if (!args.yes) {
-      throw new Error('Use codexbridge settings delete --yes in non-interactive shells.');
+      throw new Error('Use gcf settings delete --yes in non-interactive shells.');
     }
     deleteWorkspaceProfile(root);
     statusLine('ok', 'Deleted saved settings for this workspace.');
@@ -1973,7 +1973,7 @@ async function runSettings(argv) {
 }
 
 function writeControlPrompt() {
-  process.stdout.write('codexbridge> ');
+  process.stdout.write('gcf> ');
 }
 
 function runControlPanel(details) {
@@ -2081,70 +2081,70 @@ async function main() {
     return;
   }
 
-  const root = realDir(args.root ?? envValue('CODEXBRIDGE_ROOT') ?? process.cwd());
+  const root = realDir(args.root ?? envValue('GCF_ROOT') ?? process.cwd());
   const profile = args.noProfile ? {} : loadWorkspaceProfile(root);
   const effectiveArgs = { ...profile, ...args };
   if (profile.profilePath && !args.noProfile) {
     statusLine('ok', `Using saved profile: ${profile.profilePath}`);
     const summary = profileSummary(profile);
-    if (summary) statusLine('ok', `${summary}. Future launches from this folder only need: codexbridge start`);
+    if (summary) statusLine('ok', `${summary}. Future launches from this folder only need: gcf start`);
   }
 
-  const tunnel = optionValue(args, profile, 'tunnel', ['CODEXBRIDGE_TUNNEL'], 'cloudflare');
+  const tunnel = optionValue(args, profile, 'tunnel', ['GCF_TUNNEL'], 'cloudflare');
   if (!['none', 'cloudflare'].includes(tunnel)) {
     throw new Error('Only Cloudflare Quick Tunnel is supported; none is reserved for internal local HTTP tests.');
   }
   if (args.noAuth && tunnel !== 'none') {
-    throw new Error('--no-auth is only allowed with --tunnel none. Public tunnels require CODEXBRIDGE_HTTP_TOKEN.');
+    throw new Error('--no-auth is only allowed with --tunnel none. Public tunnels require GCF_HTTP_TOKEN.');
   }
-  const mode = optionValue(args, profile, 'mode', ['CODEXBRIDGE_MODE'], 'agent');
+  const mode = optionValue(args, profile, 'mode', ['GCF_MODE'], 'agent');
   if (!['agent', 'handoff', 'pro'].includes(mode)) {
     throw new Error('--mode must be agent, handoff, or pro');
   }
 
   const allowRoots = [root, ...(args.allowRoots ?? [])].map(realDir);
-  const host = optionValue(args, profile, 'host', ['CODEXBRIDGE_HOST'], '127.0.0.1');
-  const port = String(optionValue(args, profile, 'port', ['CODEXBRIDGE_PORT'], '8787'));
-  const bash = optionValue(args, profile, 'bash', ['CODEXBRIDGE_BASH_MODE'], 'safe');
+  const host = optionValue(args, profile, 'host', ['GCF_HOST'], '127.0.0.1');
+  const port = String(optionValue(args, profile, 'port', ['GCF_PORT'], '8787'));
+  const bash = optionValue(args, profile, 'bash', ['GCF_BASH_MODE'], 'safe');
   const bashTranscript = bashTranscriptOption(args, profile);
   const codexSessions = codexSessionsOption(args, profile);
-  const codexDir = resolveCodexDir(root, optionValue(args, profile, 'codexDir', ['CODEXBRIDGE_CODEX_DIR'], ''));
+  const codexDir = resolveCodexDir(root, optionValue(args, profile, 'codexDir', ['GCF_CODEX_DIR'], ''));
   const { bashSession, requireBashSession } = bashSessionOptions(args, profile);
-  const write = optionValue(args, profile, 'write', ['CODEXBRIDGE_WRITE_MODE'], mode === 'agent' ? 'workspace' : 'handoff');
-  const toolMode = optionValue(args, profile, 'toolMode', ['CODEXBRIDGE_TOOL_MODE'], 'standard');
-  const widgetDomain = optionValue(args, profile, 'widgetDomain', ['CODEXBRIDGE_WIDGET_DOMAIN'], 'https://naplesblue.github.io');
+  const write = optionValue(args, profile, 'write', ['GCF_WRITE_MODE'], mode === 'agent' ? 'workspace' : 'handoff');
+  const toolMode = optionValue(args, profile, 'toolMode', ['GCF_TOOL_MODE'], 'standard');
+  const widgetDomain = optionValue(args, profile, 'widgetDomain', ['GCF_WIDGET_DOMAIN'], 'https://naplesblue.github.io');
   if (!['off', 'safe', 'full'].includes(bash)) throw new Error('--bash must be off, safe, or full');
   if (!['off', 'handoff', 'workspace'].includes(write)) throw new Error('--write must be off, handoff, or workspace');
   if (!['minimal', 'standard', 'full'].includes(toolMode)) throw new Error('--tool-mode must be minimal, standard, or full');
 
-  let token = args.noAuth ? '' : optionValue(args, profile, 'token', ['CODEXBRIDGE_HTTP_TOKEN', 'CODEBASE_BRIDGE_HTTP_TOKEN'], '');
+  let token = args.noAuth ? '' : optionValue(args, profile, 'token', ['GCF_HTTP_TOKEN', 'CODEBASE_BRIDGE_HTTP_TOKEN'], '');
   if (!token && tunnel !== 'none') token = stableToken();
 
   const serverEnv = {
     ...process.env,
-    CODEXBRIDGE_ROOT: root,
-    CODEXBRIDGE_ALLOWED_ROOTS: allowRoots.join(path.delimiter),
-    CODEXBRIDGE_HOST: host,
-    CODEXBRIDGE_PORT: port,
-    CODEXBRIDGE_BASH_MODE: bash,
-    CODEXBRIDGE_BASH_TRANSCRIPT: bashTranscript,
-    CODEXBRIDGE_BASH_SESSION_ID: bashSession,
-    CODEXBRIDGE_REQUIRE_BASH_SESSION: requireBashSession ? '1' : '0',
-    CODEXBRIDGE_CODEX_SESSIONS: codexSessions,
-    CODEXBRIDGE_WRITE_MODE: write,
-    CODEXBRIDGE_TOOL_MODE: toolMode,
-    CODEXBRIDGE_WIDGET_DOMAIN: widgetDomain,
-    CODEXBRIDGE_MODE: mode,
-    CODEXBRIDGE_TUNNEL_MODE: tunnel === 'none' ? '0' : '1'
+    GCF_ROOT: root,
+    GCF_ALLOWED_ROOTS: allowRoots.join(path.delimiter),
+    GCF_HOST: host,
+    GCF_PORT: port,
+    GCF_BASH_MODE: bash,
+    GCF_BASH_TRANSCRIPT: bashTranscript,
+    GCF_BASH_SESSION_ID: bashSession,
+    GCF_REQUIRE_BASH_SESSION: requireBashSession ? '1' : '0',
+    GCF_CODEX_SESSIONS: codexSessions,
+    GCF_WRITE_MODE: write,
+    GCF_TOOL_MODE: toolMode,
+    GCF_WIDGET_DOMAIN: widgetDomain,
+    GCF_MODE: mode,
+    GCF_TUNNEL_MODE: tunnel === 'none' ? '0' : '1'
   };
-  if (codexDir) serverEnv.CODEXBRIDGE_CODEX_DIR = codexDir;
-  if (args.logRequests || envValue('CODEXBRIDGE_LOG_REQUESTS') === '1') serverEnv.CODEXBRIDGE_LOG_REQUESTS = '1';
-  if (args.allowHome) serverEnv.CODEXBRIDGE_ALLOW_HOME = '1';
-  if (token) serverEnv.CODEXBRIDGE_HTTP_TOKEN = token;
-  else delete serverEnv.CODEXBRIDGE_HTTP_TOKEN;
+  if (codexDir) serverEnv.GCF_CODEX_DIR = codexDir;
+  if (args.logRequests || envValue('GCF_LOG_REQUESTS') === '1') serverEnv.GCF_LOG_REQUESTS = '1';
+  if (args.allowHome) serverEnv.GCF_ALLOW_HOME = '1';
+  if (token) serverEnv.GCF_HTTP_TOKEN = token;
+  else delete serverEnv.GCF_HTTP_TOKEN;
 
   if (args.printEnv) {
-    console.log(JSON.stringify({ ...serverEnv, CODEXBRIDGE_HTTP_TOKEN: token ? '<redacted>' : undefined }, null, 2));
+    console.log(JSON.stringify({ ...serverEnv, GCF_HTTP_TOKEN: token ? '<redacted>' : undefined }, null, 2));
   }
 
   const httpPath = path.join(projectRoot, 'dist', 'http.js');
@@ -2167,9 +2167,9 @@ async function main() {
     )
   ]);
 
-  const verboseLogs = Boolean(args.logRequests || envValue('CODEXBRIDGE_LOG_REQUESTS') === '1');
+  const verboseLogs = Boolean(args.logRequests || envValue('GCF_LOG_REQUESTS') === '1');
   statusLine('wait', 'Starting local MCP server');
-  const server = spawnLogged('codexbridge', process.execPath, [httpPath], { cwd: projectRoot, env: serverEnv, verbose: verboseLogs });
+  const server = spawnLogged('gcf', process.execPath, [httpPath], { cwd: projectRoot, env: serverEnv, verbose: verboseLogs });
   let cloudflared;
   const cleanup = cleanupChildren;
   process.on('SIGINT', () => { cleanup(); process.exit(130); });
@@ -2229,7 +2229,7 @@ main().catch((error) => {
   cleanupChildren();
   const message = error instanceof Error ? error.message : String(error);
   console.error(`Error: ${message}`);
-  if (envValue('CODEXBRIDGE_DEBUG') === '1' && error instanceof Error && error.stack) {
+  if (envValue('GCF_DEBUG') === '1' && error instanceof Error && error.stack) {
     console.error(error.stack);
   }
   process.exit(1);

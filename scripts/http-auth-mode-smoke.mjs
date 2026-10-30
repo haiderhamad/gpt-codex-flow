@@ -18,14 +18,14 @@ async function test(mode, provided) {
   const root = await mkdtemp(join(tmpdir(), 'bridge-auth-'));
   const number = await freePort();
   const authValue = randomUUID();
-  const env = { ...process.env, CODEXBRIDGE_ROOT: root,
-    CODEXBRIDGE_HOME: root + '/owner-state',
-    CODEXBRIDGE_ALLOWED_ROOTS: root, CODEXBRIDGE_HOST: '127.0.0.1',
-    CODEXBRIDGE_PORT: String(number), CODEXBRIDGE_HTTP_AUTH_MODE: mode,
-    CODEXBRIDGE_BASH_MODE: 'off', CODEXBRIDGE_WRITE_MODE: 'off' };
-  delete env.CODEXBRIDGE_HTTP_TOKEN;
+  const env = { ...process.env, GCF_ROOT: root,
+    GCF_HOME: root + '/owner-state',
+    GCF_ALLOWED_ROOTS: root, GCF_HOST: '127.0.0.1',
+    GCF_PORT: String(number), GCF_HTTP_AUTH_MODE: mode,
+    GCF_BASH_MODE: 'off', GCF_WRITE_MODE: 'off' };
+  delete env.GCF_HTTP_TOKEN;
   delete env.CODEBASE_BRIDGE_HTTP_TOKEN;
-  if (provided) env.CODEXBRIDGE_HTTP_TOKEN = authValue;
+  if (provided) env.GCF_HTTP_TOKEN = authValue;
   const child = spawn(process.execPath, ['dist/http.js'], {
     cwd: process.cwd(), env, stdio: ['ignore', 'ignore', 'pipe']
   });
@@ -82,7 +82,7 @@ async function test(mode, provided) {
     }
     const expected = mode === 'legacy' ? 200 : 401;
     assert.equal((await fetch(url + '?token=' + authValue)).status, expected);
-    assert.equal((await fetch(url + '?codexbridge_token=' + authValue, { headers })).status, expected);
+    assert.equal((await fetch(url + '?gcf_token=' + authValue, { headers })).status, expected);
     assert.equal((await fetch(url.replace('healthz', 'admin/profile'))).status, 401);
     console.log('HTTP auth ' + mode + ' passed');
   } finally {

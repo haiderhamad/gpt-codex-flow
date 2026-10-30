@@ -3,8 +3,8 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
-import type { CodexBridgeConfig } from "./config.js";
-import { CodexBridgeError } from "./guard.js";
+import type { GcfConfig } from "./config.js";
+import { GcfError } from "./guard.js";
 
 const CODEX_IDE_CONTEXT_PREFIX = "# Context from my IDE setup:";
 const CODEX_REQUEST_MARKER = "my request for codex";
@@ -44,21 +44,21 @@ export interface CodexSessionReadResult {
   text: string;
 }
 
-function codexDir(config: CodexBridgeConfig): string {
+function codexDir(config: GcfConfig): string {
   return path.resolve(config.codexDir || path.join(os.homedir(), ".codex"));
 }
 
-function sessionRoots(config: CodexBridgeConfig): string[] {
+function sessionRoots(config: GcfConfig): string[] {
   const root = codexDir(config);
   return [path.join(root, "sessions"), path.join(root, "archived_sessions")];
 }
 
-function ensureEnabled(config: CodexBridgeConfig, read = false): void {
+function ensureEnabled(config: GcfConfig, read = false): void {
   if (config.codexSessions === "off") {
-    throw new CodexBridgeError("Codex session tools are disabled. Start with --codex-sessions metadata or --codex-sessions read to opt in.");
+    throw new GcfError("Codex session tools are disabled. Start with --codex-sessions metadata or --codex-sessions read to opt in.");
   }
   if (read && config.codexSessions !== "read") {
-    throw new CodexBridgeError("Reading Codex session transcripts is disabled. Start with --codex-sessions read to opt in.");
+    throw new GcfError("Reading Codex session transcripts is disabled. Start with --codex-sessions read to opt in.");
   }
 }
 
@@ -176,7 +176,7 @@ function codexRequestHeadingPayload(line: string): string | null {
   return suffix.replace(/^[:：\-—\s]+/, "").trim();
 }
 
-function extractCodexBridgemptFromIdeContext(text: string): string | undefined {
+function extractGcfmptFromIdeContext(text: string): string | undefined {
   const trimmed = text.trim();
   if (!trimmed.startsWith(CODEX_IDE_CONTEXT_PREFIX)) return undefined;
   const lines = trimmed.replace(/\r\n/g, "\n").split("\n");
@@ -197,7 +197,7 @@ function extractCodexBridgemptFromIdeContext(text: string): string | undefined {
 function titleCandidateFromUserMessage(text: string): string | undefined {
   const trimmed = text.trim();
   if (!trimmed || trimmed.startsWith("# AGENTS.md") || trimmed.startsWith("<environment_context>")) return undefined;
-  if (trimmed.startsWith(CODEX_IDE_CONTEXT_PREFIX)) return extractCodexBridgemptFromIdeContext(trimmed);
+  if (trimmed.startsWith(CODEX_IDE_CONTEXT_PREFIX)) return extractGcfmptFromIdeContext(trimmed);
   return trimmed;
 }
 
@@ -271,7 +271,7 @@ async function parseSessionMeta(filePath: string): Promise<CodexSessionMeta | un
   };
 }
 
-async function collectSessionMetas(config: CodexBridgeConfig): Promise<CodexSessionMeta[]> {
+async function collectSessionMetas(config: GcfConfig): Promise<CodexSessionMeta[]> {
   const files: string[] = [];
   for (const root of sessionRoots(config)) {
     await collectJsonlFiles(root, files, 6, 3000);
@@ -286,7 +286,7 @@ async function collectSessionMetas(config: CodexBridgeConfig): Promise<CodexSess
 }
 
 export async function listCodexSessions(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   options: { maxSessions?: number; query?: string } = {}
 ): Promise<CodexSessionListResult> {
   ensureEnabled(config);
@@ -314,7 +314,7 @@ export async function listCodexSessions(
   };
 }
 
-async function resolveSessionSource(config: CodexBridgeConfig, sessionId?: string, sourcePath?: string): Promise<CodexSessionMeta> {
+async function resolveSessionSource(config: GcfConfig, sessionId?: string, sourcePath?: string): Promise<CodexSessionMeta> {
   ensureEnabled(config, true);
   const roots = sessionRoots(config).map((root) => path.resolve(root));
 
@@ -322,25 +322,25 @@ async function resolveSessionSource(config: CodexBridgeConfig, sessionId?: strin
     const resolved = path.resolve(sourcePath);
     const canonical = await fsp.realpath(resolved).catch(() => resolved);
     if (!roots.some((root) => isSubpath(canonical, root))) {
-      throw new CodexBridgeError("Codex session source_path is outside configured Codex session roots.");
+      throw new GcfError("Codex session source_path is outside configured Codex session roots.");
     }
     const meta = await parseSessionMeta(canonical);
-    if (!meta) throw new CodexBridgeError("Could not parse Codex session metadata from source_path.");
-    if (sessionId && meta.session_id !== sessionId) throw new CodexBridgeError("Codex session id does not match source_path.");
+    if (!meta) throw new GcfError("Could not parse Codex session metadata from source_path.");
+    if (sessionId && meta.session_id !== sessionId) throw new GcfError("Codex session id does not match source_path.");
     return meta;
   }
 
-  if (!sessionId) throw new CodexBridgeError("session_id or source_path is required.");
+  if (!sessionId) throw new GcfError("session_id or source_path is required.");
   const sessions = await collectSessionMetas(config);
   const match = sessions.find((session) => session.session_id === sessionId);
-  if (!match) throw new CodexBridgeError(`Codex session not found: ${sessionId}`);
+  if (!match) throw new GcfError(`Codex session not found: ${sessionId}`);
   return match;
 }
 
 async function loadSessionMessages(filePath: string, maxMessages: number, maxTotalBytes: number): Promise<{ messages: CodexSessionMessage[]; truncated: boolean }> {
   const size = statSync(filePath).size;
   if (size > 20_000_000) {
-    throw new CodexBridgeError(`Codex session file is too large (${size} bytes).`);
+    throw new GcfError(`Codex session file is too large (${size} bytes).`);
   }
 
   const messages: CodexSessionMessage[] = [];
@@ -381,7 +381,7 @@ async function loadSessionMessages(filePath: string, maxMessages: number, maxTot
 }
 
 export async function readCodexSession(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   options: { sessionId?: string; sourcePath?: string; maxMessages?: number; maxTotalBytes?: number } = {}
 ): Promise<CodexSessionReadResult> {
   const session = await resolveSessionSource(config, options.sessionId, options.sourcePath);

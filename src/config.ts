@@ -21,10 +21,11 @@ export interface SshProfileConfig {
   mode?: SshMode;
 }
 
-export interface CodexBridgeConfig {
+export interface GcfConfig {
   defaultRoot: string;
   allowedRoots: string[];
   projectAliasFile?: string;
+  ownerLeadManifest?: string;
   host: string;
   port: number;
   widgetDomain: string;
@@ -163,7 +164,7 @@ function numberFrom(value: string | undefined, fallback: number, min: number, ma
 function httpAuthModeFrom(value: string | undefined): HttpAuthMode {
   if (value === undefined || value === "legacy") return "legacy";
   if (value === "header-only") return "header-only";
-  throw new Error("CODEXBRIDGE_HTTP_AUTH_MODE must be legacy or header-only.");
+  throw new Error("GCF_HTTP_AUTH_MODE must be legacy or header-only.");
 }
 
 function bashModeFrom(value: string | undefined): BashMode {
@@ -191,7 +192,7 @@ function bashSessionIdFrom(value: string | undefined): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(trimmed)) {
-    throw new Error("CODEXBRIDGE_BASH_SESSION_ID must be 1-64 characters using letters, numbers, dot, underscore, or dash, and must start with a letter or number.");
+    throw new Error("GCF_BASH_SESSION_ID must be 1-64 characters using letters, numbers, dot, underscore, or dash, and must start with a letter or number.");
   }
   return trimmed;
 }
@@ -212,13 +213,13 @@ function widgetDomainFrom(value: string | undefined): string {
   try {
     parsed = new URL(raw);
   } catch {
-    throw new Error(`CODEXBRIDGE_WIDGET_DOMAIN must be a valid origin URL, got: ${raw}`);
+    throw new Error(`GCF_WIDGET_DOMAIN must be a valid origin URL, got: ${raw}`);
   }
   if (parsed.protocol !== "https:") {
-    throw new Error("CODEXBRIDGE_WIDGET_DOMAIN must use https.");
+    throw new Error("GCF_WIDGET_DOMAIN must use https.");
   }
   if (parsed.pathname !== "/" || parsed.search || parsed.hash) {
-    throw new Error("CODEXBRIDGE_WIDGET_DOMAIN must be an origin only, for example https://widgets.example.com.");
+    throw new Error("GCF_WIDGET_DOMAIN must be an origin only, for example https://widgets.example.com.");
   }
   return parsed.origin;
 }
@@ -257,10 +258,10 @@ function sshProfilesFrom(value: string | undefined): Record<string, SshProfileCo
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(`CODEXBRIDGE_SSH_PROFILES must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(`GCF_SSH_PROFILES must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("CODEXBRIDGE_SSH_PROFILES must be a JSON object keyed by profile name.");
+    throw new Error("GCF_SSH_PROFILES must be a JSON object keyed by profile name.");
   }
   const profiles: Record<string, SshProfileConfig> = {};
   for (const [rawName, rawProfile] of Object.entries(parsed)) {
@@ -290,15 +291,15 @@ function isLoopbackHost(host: string): boolean {
   return host === "127.0.0.1" || host === "localhost" || host === "::1";
 }
 
-export function loadConfig(argv = process.argv.slice(2)): CodexBridgeConfig {
+export function loadConfig(argv = process.argv.slice(2)): GcfConfig {
   const args = parseArgs(argv);
 
   const rootFromArgs = typeof args.root === "string" ? args.root : undefined;
   const manifestArg = typeof args["project-roots-file"] === "string"
-    ? args["project-roots-file"] : process.env.CODEXBRIDGE_PROJECT_ROOTS_FILE;
+    ? args["project-roots-file"] : process.env.GCF_PROJECT_ROOTS_FILE;
   const manifestFile = manifestArg ? path.resolve(expandHome(manifestArg)) : undefined;
   const manifestRoots = manifestFile ? readProjectRootsManifest(manifestFile) : undefined;
-  const explicitRoot = rootFromArgs ?? process.env.CODEXBRIDGE_ROOT ?? process.env.CODEBASE_BRIDGE_REPO_ROOT;
+  const explicitRoot = rootFromArgs ?? process.env.GCF_ROOT ?? process.env.CODEBASE_BRIDGE_REPO_ROOT;
   const root = explicitRoot ?? manifestRoots?.[0] ?? process.cwd();
   const defaultRoot = toRealDir(root);
   if (manifestRoots && !manifestRoots.includes(defaultRoot)) {
@@ -311,11 +312,11 @@ export function loadConfig(argv = process.argv.slice(2)): CodexBridgeConfig {
       ? [args["allow-root"]]
       : [];
   const envAllowedRoots = [
-    ...splitRoots(process.env.CODEXBRIDGE_ALLOWED_ROOTS),
+    ...splitRoots(process.env.GCF_ALLOWED_ROOTS),
     ...splitRoots(process.env.CODEBASE_BRIDGE_ALLOWED_ROOTS)
   ];
 
-  const allowHome = process.env.CODEXBRIDGE_ALLOW_HOME === "1" || args["allow-home"] === true;
+  const allowHome = process.env.GCF_ALLOW_HOME === "1" || args["allow-home"] === true;
   if (manifestRoots && (allowHome || allowRootArgs.length || envAllowedRoots.length)) {
     throw new Error("Project roots manifest mode forbids --allow-home and extra --allow-root/environment roots; edit the owner-reviewed list instead.");
   }
@@ -339,49 +340,50 @@ export function loadConfig(argv = process.argv.slice(2)): CodexBridgeConfig {
   const writeArg = typeof args.write === "string" ? args.write : undefined;
   const toolModeArg = typeof args["tool-mode"] === "string" ? args["tool-mode"] : undefined;
   const widgetDomainArg = typeof args["widget-domain"] === "string" ? args["widget-domain"] : undefined;
-  const extraBlockedGlobs = splitList(process.env.CODEXBRIDGE_BLOCKED_GLOBS, ",");
-  const host = hostArg ?? process.env.HOST ?? process.env.CODEXBRIDGE_HOST ?? "127.0.0.1";
-  const authToken = process.env.CODEXBRIDGE_HTTP_TOKEN ?? process.env.CODEBASE_BRIDGE_HTTP_TOKEN;
-  const allowNoToken = boolFrom(process.env.CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN, false);
+  const extraBlockedGlobs = splitList(process.env.GCF_BLOCKED_GLOBS, ",");
+  const host = hostArg ?? process.env.HOST ?? process.env.GCF_HOST ?? "127.0.0.1";
+  const authToken = process.env.GCF_HTTP_TOKEN ?? process.env.CODEBASE_BRIDGE_HTTP_TOKEN;
+  const allowNoToken = boolFrom(process.env.GCF_ALLOW_NO_HTTP_TOKEN, false);
   const requireHttpToken =
-    boolFrom(process.env.CODEXBRIDGE_REQUIRE_HTTP_TOKEN, false) ||
-    boolFrom(process.env.CODEXBRIDGE_TUNNEL_MODE, false) ||
+    boolFrom(process.env.GCF_REQUIRE_HTTP_TOKEN, false) ||
+    boolFrom(process.env.GCF_TUNNEL_MODE, false) ||
     (!isLoopbackHost(host) && !allowNoToken);
-  const bashSessionId = bashSessionIdFrom(bashSessionArg ?? process.env.CODEXBRIDGE_BASH_SESSION_ID);
-  const requireBashSession = boolFrom(requireBashSessionArg ?? process.env.CODEXBRIDGE_REQUIRE_BASH_SESSION, false);
+  const bashSessionId = bashSessionIdFrom(bashSessionArg ?? process.env.GCF_BASH_SESSION_ID);
+  const requireBashSession = boolFrom(requireBashSessionArg ?? process.env.GCF_REQUIRE_BASH_SESSION, false);
   if (requireBashSession && !bashSessionId) {
-    throw new Error("CODEXBRIDGE_REQUIRE_BASH_SESSION requires CODEXBRIDGE_BASH_SESSION_ID or --bash-session.");
+    throw new Error("GCF_REQUIRE_BASH_SESSION requires GCF_BASH_SESSION_ID or --bash-session.");
   }
 
   return {
     defaultRoot,
     allowedRoots,
-    projectAliasFile: path.resolve(expandHome(typeof args["project-alias-file"] === "string" ? args["project-alias-file"] : process.env.CODEXBRIDGE_PROJECT_ALIAS_FILE || path.join(os.homedir(), ".codexbridge", "gpt-codex-flow", "project-aliases.json"))),
+    projectAliasFile: path.resolve(expandHome(typeof args["project-alias-file"] === "string" ? args["project-alias-file"] : process.env.GCF_PROJECT_ALIAS_FILE || path.join(os.homedir(), ".gcf", "gpt-codex-flow", "project-aliases.json"))),
+    ownerLeadManifest: process.env.GCF_OWNER_LEAD_MANIFEST,
     host,
-    port: numberFrom(portArg ?? process.env.PORT ?? process.env.CODEXBRIDGE_PORT, 8787, 1, 65535),
-    widgetDomain: widgetDomainFrom(widgetDomainArg ?? process.env.CODEXBRIDGE_WIDGET_DOMAIN),
+    port: numberFrom(portArg ?? process.env.PORT ?? process.env.GCF_PORT, 8787, 1, 65535),
+    widgetDomain: widgetDomainFrom(widgetDomainArg ?? process.env.GCF_WIDGET_DOMAIN),
     authToken,
     requireHttpToken,
-    httpAuthMode: httpAuthModeFrom(process.env.CODEXBRIDGE_HTTP_AUTH_MODE),
-    bashMode: bashModeFrom(bashArg ?? process.env.CODEXBRIDGE_BASH_MODE),
-    bashTranscript: bashTranscriptFrom(bashTranscriptArg ?? process.env.CODEXBRIDGE_BASH_TRANSCRIPT),
+    httpAuthMode: httpAuthModeFrom(process.env.GCF_HTTP_AUTH_MODE),
+    bashMode: bashModeFrom(bashArg ?? process.env.GCF_BASH_MODE),
+    bashTranscript: bashTranscriptFrom(bashTranscriptArg ?? process.env.GCF_BASH_TRANSCRIPT),
     bashSessionId,
     requireBashSession,
-    sshMode: sshModeFrom(process.env.CODEXBRIDGE_SSH_MODE),
-    sshProfiles: sshProfilesFrom(process.env.CODEXBRIDGE_SSH_PROFILES),
-    codexSessions: codexSessionsFrom(codexSessionsArg ?? process.env.CODEXBRIDGE_CODEX_SESSIONS),
-    codexDir: expandHome(codexDirArg || process.env.CODEXBRIDGE_CODEX_DIR || path.join(os.homedir(), ".codex")),
-    writeMode: writeModeFrom(writeArg ?? process.env.CODEXBRIDGE_WRITE_MODE),
-    toolMode: toolModeFrom(toolModeArg ?? process.env.CODEXBRIDGE_TOOL_MODE),
-    inheritEnv: process.env.CODEXBRIDGE_INHERIT_ENV === "1",
-    maxReadBytes: numberFrom(process.env.CODEXBRIDGE_MAX_READ_BYTES, 180_000, 4_000, 2_000_000),
-    maxWriteBytes: numberFrom(process.env.CODEXBRIDGE_MAX_WRITE_BYTES, 1_000_000, 1_000, 10_000_000),
-    maxOutputBytes: numberFrom(process.env.CODEXBRIDGE_MAX_OUTPUT_BYTES, 120_000, 4_000, 2_000_000),
-    maxSearchResults: numberFrom(process.env.CODEXBRIDGE_MAX_SEARCH_RESULTS, 200, 5, 2_000),
-    maxJournalEvents: numberFrom(process.env.CODEXBRIDGE_MAX_JOURNAL_EVENTS, 200, 10, 5_000),
-    maxHttpSessions: numberFrom(process.env.CODEXBRIDGE_MAX_HTTP_SESSIONS, 64, 1, 512),
-    httpSessionTtlMs: numberFrom(process.env.CODEXBRIDGE_HTTP_SESSION_TTL_MS, 30 * 60_000, 60_000, 24 * 60 * 60_000),
+    sshMode: sshModeFrom(process.env.GCF_SSH_MODE),
+    sshProfiles: sshProfilesFrom(process.env.GCF_SSH_PROFILES),
+    codexSessions: codexSessionsFrom(codexSessionsArg ?? process.env.GCF_CODEX_SESSIONS),
+    codexDir: expandHome(codexDirArg || process.env.GCF_CODEX_DIR || path.join(os.homedir(), ".codex")),
+    writeMode: writeModeFrom(writeArg ?? process.env.GCF_WRITE_MODE),
+    toolMode: toolModeFrom(toolModeArg ?? process.env.GCF_TOOL_MODE),
+    inheritEnv: process.env.GCF_INHERIT_ENV === "1",
+    maxReadBytes: numberFrom(process.env.GCF_MAX_READ_BYTES, 180_000, 4_000, 2_000_000),
+    maxWriteBytes: numberFrom(process.env.GCF_MAX_WRITE_BYTES, 1_000_000, 1_000, 10_000_000),
+    maxOutputBytes: numberFrom(process.env.GCF_MAX_OUTPUT_BYTES, 120_000, 4_000, 2_000_000),
+    maxSearchResults: numberFrom(process.env.GCF_MAX_SEARCH_RESULTS, 200, 5, 2_000),
+    maxJournalEvents: numberFrom(process.env.GCF_MAX_JOURNAL_EVENTS, 200, 10, 5_000),
+    maxHttpSessions: numberFrom(process.env.GCF_MAX_HTTP_SESSIONS, 64, 1, 512),
+    httpSessionTtlMs: numberFrom(process.env.GCF_HTTP_SESSION_TTL_MS, 30 * 60_000, 60_000, 24 * 60 * 60_000),
     blockedGlobs: [...DEFAULT_BLOCKED_GLOBS, ...extraBlockedGlobs],
-    contextDir: process.env.CODEXBRIDGE_CONTEXT_DIR ?? ".ai-bridge"
+    contextDir: process.env.GCF_CONTEXT_DIR ?? ".ai-bridge"
   };
 }

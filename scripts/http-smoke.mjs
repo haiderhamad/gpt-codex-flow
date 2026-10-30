@@ -72,23 +72,23 @@ async function waitForHealthJson(url, timeoutMs = 15000) {
 }
 
 async function expectHttpTokenRequired(name, overrides = {}) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), `codexbridge-http-no-token-${name}-`));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), `gcf-http-no-token-${name}-`));
   const port = await getFreePort();
   const env = {
     ...process.env,
-    CODEXBRIDGE_ROOT: root,
-    CODEXBRIDGE_ALLOWED_ROOTS: root,
-    CODEXBRIDGE_HOST: '127.0.0.1',
-    CODEXBRIDGE_PORT: String(port),
-    CODEXBRIDGE_BASH_MODE: 'safe',
-    CODEXBRIDGE_WRITE_MODE: 'handoff',
+    GCF_ROOT: root,
+    GCF_ALLOWED_ROOTS: root,
+    GCF_HOST: '127.0.0.1',
+    GCF_PORT: String(port),
+    GCF_BASH_MODE: 'safe',
+    GCF_WRITE_MODE: 'handoff',
     ...overrides
   };
-  delete env.CODEXBRIDGE_HTTP_TOKEN;
-  delete env.CODEXBRIDGE_HTTP_TOKEN;
+  delete env.GCF_HTTP_TOKEN;
+  delete env.GCF_HTTP_TOKEN;
   delete env.CODEBASE_BRIDGE_HTTP_TOKEN;
-  delete env.CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN;
-  delete env.CODEXBRIDGE_ALLOW_NO_HTTP_TOKEN;
+  delete env.GCF_ALLOW_NO_HTTP_TOKEN;
+  delete env.GCF_ALLOW_NO_HTTP_TOKEN;
 
   const child = spawn('node', ['dist/http.js'], {
     cwd: path.resolve('.'),
@@ -99,13 +99,13 @@ async function expectHttpTokenRequired(name, overrides = {}) {
   if (result.code === 0) {
     throw new Error(`expected ${name} HTTP server without token to fail closed`);
   }
-  if (!result.stderr.includes('CODEXBRIDGE_HTTP_TOKEN is required')) {
+  if (!result.stderr.includes('GCF_HTTP_TOKEN is required')) {
     throw new Error(`expected ${name} missing-token failure, got:\n${result.stderr}`);
   }
 }
 
 async function listTools(url, token) {
-  const client = new Client({ name: 'codexbridge-http-smoke', version: '0.0.0' });
+  const client = new Client({ name: 'gcf-http-smoke', version: '0.0.0' });
   const transport = new StreamableHTTPClientTransport(new URL(url), {
     requestInit: token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
   });
@@ -128,11 +128,11 @@ function hasWidgetMeta(tools, name, uri) {
   return meta.ui?.resourceUri === uri || meta['openai/outputTemplate'] === uri;
 }
 
-await expectHttpTokenRequired('non-loopback', { CODEXBRIDGE_HOST: '0.0.0.0' });
-await expectHttpTokenRequired('tunnel-mode', { CODEXBRIDGE_TUNNEL_MODE: '1' });
+await expectHttpTokenRequired('non-loopback', { GCF_HOST: '0.0.0.0' });
+await expectHttpTokenRequired('tunnel-mode', { GCF_TUNNEL_MODE: '1' });
 
 async function withClient(url, fn) {
-  const client = new Client({ name: 'codexbridge-http-smoke', version: '0.0.0' });
+  const client = new Client({ name: 'gcf-http-smoke', version: '0.0.0' });
   const transport = new StreamableHTTPClientTransport(new URL(url));
   try {
     await client.connect(transport);
@@ -151,8 +151,8 @@ async function callTool(client, name, args = {}) {
   return result;
 }
 
-const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-http-smoke-'));
-const profileHome = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-http-profile-home-'));
+const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-http-smoke-'));
+const profileHome = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-http-profile-home-'));
 await fs.mkdir(path.join(root, '.codex', 'skills', 'http-smoke-skill'), { recursive: true });
 await fs.writeFile(path.join(root, '.codex', 'skills', 'http-smoke-skill', 'SKILL.md'), [
   '---',
@@ -164,20 +164,20 @@ await fs.writeFile(path.join(root, '.codex', 'skills', 'http-smoke-skill', 'SKIL
   ''
 ].join('\n'), 'utf8');
 const port = await getFreePort();
-const token = 'codexbridge-http-smoke-token';
+const token = 'gcf-http-smoke-token';
 const child = spawn('node', ['dist/http.js'], {
   cwd: path.resolve('.'),
   env: {
     ...process.env,
-    CODEXBRIDGE_ROOT: root,
-    CODEXBRIDGE_ALLOWED_ROOTS: root,
-    CODEXBRIDGE_PORT: String(port),
-    CODEXBRIDGE_HTTP_TOKEN: token,
-    CODEXBRIDGE_BASH_MODE: 'safe',
-    CODEXBRIDGE_WRITE_MODE: 'handoff',
-    CODEXBRIDGE_TOOL_MODE: 'full',
-    CODEXBRIDGE_WIDGET_DOMAIN: 'https://widgets.codexbridge.test',
-    CODEXBRIDGE_HOME: profileHome
+    GCF_ROOT: root,
+    GCF_ALLOWED_ROOTS: root,
+    GCF_PORT: String(port),
+    GCF_HTTP_TOKEN: token,
+    GCF_BASH_MODE: 'safe',
+    GCF_WRITE_MODE: 'handoff',
+    GCF_TOOL_MODE: 'full',
+    GCF_WIDGET_DOMAIN: 'https://widgets.gcf.test',
+    GCF_HOME: profileHome
   },
   stdio: ['ignore', 'pipe', 'pipe']
 });
@@ -198,7 +198,7 @@ try {
     throw new Error(`expected authenticated healthz to return 200, got ${authorized.status}`);
   }
 
-  const queryAuthorized = await fetch(`${baseUrl}/healthz?codexbridge_token=${encodeURIComponent(token)}`);
+  const queryAuthorized = await fetch(`${baseUrl}/healthz?gcf_token=${encodeURIComponent(token)}`);
   if (queryAuthorized.status !== 200) {
     throw new Error(`expected URL-token healthz to return 200, got ${queryAuthorized.status}`);
   }
@@ -215,7 +215,7 @@ try {
     }
     for (const auth of ['query', 'bearer']) {
       const retired = await fetch(
-        `${baseUrl}${route}${auth === 'query' ? `?codexbridge_token=${encodeURIComponent(token)}` : ''}`,
+        `${baseUrl}${route}${auth === 'query' ? `?gcf_token=${encodeURIComponent(token)}` : ''}`,
         auth === 'bearer' ? { headers: { Authorization: `Bearer ${token}` } } : undefined
       );
       if (retired.status !== 410 || !retired.headers.get('content-type')?.includes('application/json')) {
@@ -232,7 +232,7 @@ try {
     }
   }
 
-  const profileBefore = await fetch(`${baseUrl}/admin/profile?codexbridge_token=${encodeURIComponent(token)}`);
+  const profileBefore = await fetch(`${baseUrl}/admin/profile?gcf_token=${encodeURIComponent(token)}`);
   const profileBeforeJson = await profileBefore.json();
   if (profileBefore.status !== 200 || profileBeforeJson.exists !== false) {
     throw new Error(`expected empty admin profile response, got ${profileBefore.status} ${JSON.stringify(profileBeforeJson)}`);
@@ -242,7 +242,7 @@ try {
   }
 
   for (const method of ['POST','PUT','PATCH','DELETE']) {
-    const denied = await fetch(`${baseUrl}/admin/profile?codexbridge_token=${encodeURIComponent(token)}`, {
+    const denied = await fetch(`${baseUrl}/admin/profile?gcf_token=${encodeURIComponent(token)}`, {
       method, headers: {'content-type':'application/json'},
       body: JSON.stringify({tunnel:'none',write:'off',bash:'off'})
     });
@@ -259,20 +259,20 @@ try {
       if (denied.status !== 403) throw new Error(`${method} ${route} exposed on MCP listener`);
     }
   }
-  const profileAfter = await fetch(`${baseUrl}/admin/profile?codexbridge_token=${encodeURIComponent(token)}`);
+  const profileAfter = await fetch(`${baseUrl}/admin/profile?gcf_token=${encodeURIComponent(token)}`);
   if ((await profileAfter.json()).exists !== false) throw new Error('Remote requests created a saved profile');
 
-  const queryTools = await listTools(`${baseUrl}/mcp?codexbridge_token=${encodeURIComponent(token)}`);
+  const queryTools = await listTools(`${baseUrl}/mcp?gcf_token=${encodeURIComponent(token)}`);
   const queryToolNames = toolNames(queryTools);
-  for (const expected of ['server_config', 'codexbridge_self_test', 'codexbridge_inventory', 'open_current_workspace', 'open_workspace', 'workspace_snapshot', 'load_skill', 'show_changes', 'codex_context', 'handoff_to_agent', 'handoff_to_codex', 'export_pro_context']) {
+  for (const expected of ['server_config', 'gcf_self_test', 'gcf_inventory', 'open_current_workspace', 'open_workspace', 'workspace_snapshot', 'load_skill', 'show_changes', 'codex_context', 'handoff_to_agent', 'handoff_to_codex', 'export_pro_context']) {
     if (!queryToolNames.includes(expected)) {
       throw new Error(`URL-token MCP tools/list missing ${expected}; got ${queryToolNames.join(', ')}`);
     }
   }
-  const toolCardUri = 'ui://widget/codexbridge-tool-card-v1.html';
+  const toolCardUri = 'ui://widget/gcf-tool-card-v2.html';
   for (const visualTool of queryToolNames) {
     if (!hasWidgetMeta(queryTools, visualTool, toolCardUri)) {
-      throw new Error(`${visualTool} should render the CodexBridge widget`);
+      throw new Error(`${visualTool} should render the GPT Codex Flow widget`);
     }
   }
 
@@ -282,7 +282,7 @@ try {
     throw new Error(`bearer MCP tools/list missing server_config; got ${headerToolNames.join(', ')}`);
   }
 
-  const mcpUrl = `${baseUrl}/mcp?codexbridge_token=${encodeURIComponent(token)}`;
+  const mcpUrl = `${baseUrl}/mcp?gcf_token=${encodeURIComponent(token)}`;
   await withClient(mcpUrl, async (client) => {
     const resources = await client.listResources();
     const toolCard = resources.resources.find((resource) => resource.uri === toolCardUri);
@@ -299,14 +299,14 @@ try {
     if (!widgetMeta.ui?.csp || !widgetMeta['openai/widgetCSP']) {
       throw new Error('HTTP tool-card widget resource did not expose standard and ChatGPT CSP metadata');
     }
-    if (widgetMeta.ui?.domain !== 'https://widgets.codexbridge.test' || widgetMeta['openai/widgetDomain'] !== 'https://widgets.codexbridge.test') {
+    if (widgetMeta.ui?.domain !== 'https://widgets.gcf.test' || widgetMeta['openai/widgetDomain'] !== 'https://widgets.gcf.test') {
       throw new Error('HTTP tool-card widget resource did not expose standard and ChatGPT widget domain metadata');
     }
   });
 
   const currentOpened = await withClient(mcpUrl, async (client) => {
     const result = await callTool(client, 'open_current_workspace', { include_tree: false });
-    if (result.structuredContent.codexbridge_tool !== 'open_current_workspace') {
+    if (result.structuredContent.gcf_tool !== 'open_current_workspace') {
       throw new Error('HTTP tool result was not tagged for widget rendering');
     }
     if (result.structuredContent.tool_mode !== 'full') {
@@ -319,11 +319,11 @@ try {
   });
 
   await withClient(mcpUrl, async (client) => {
-    const inventory = await callTool(client, 'codexbridge_inventory', {
+    const inventory = await callTool(client, 'gcf_inventory', {
       include_global_skills: false,
       include_mcp_servers: false
     });
-    if (inventory.structuredContent.codexbridge_tool !== 'codexbridge_inventory') {
+    if (inventory.structuredContent.gcf_tool !== 'gcf_inventory') {
       throw new Error('HTTP inventory result was not tagged for widget rendering');
     }
     const loadedSkill = await callTool(client, 'load_skill', {
@@ -388,11 +388,11 @@ try {
   child.kill('SIGTERM');
 }
 
-const cliRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-cli-http-smoke-'));
+const cliRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-cli-http-smoke-'));
 await fs.mkdir(path.join(cliRoot, '.codex'), { recursive: true });
 const cliPort = await getFreePort();
 const cliChild = spawn(process.execPath, [
-  'scripts/codexbridge.mjs',
+  'scripts/gcf.mjs',
   'start',
   '--root',
   cliRoot,
@@ -409,7 +409,7 @@ const cliChild = spawn(process.execPath, [
   cwd: path.resolve('.'),
   env: {
     ...process.env,
-    CODEXBRIDGE_HOME: await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-cli-http-home-'))
+    GCF_HOME: await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-cli-http-home-'))
   },
   stdio: ['ignore', 'pipe', 'pipe']
 });

@@ -58,9 +58,9 @@ try {
     args: ["dist/stdio.js", "--root", root, "--allow-root", root,
       "--write", "workspace", "--bash", "safe", "--tool-mode", "standard"],
     cwd: process.cwd(),
-    env: { ...process.env, CODEXBRIDGE_ROOT: root,
-      CODEXBRIDGE_ALLOWED_ROOTS: root, CODEXBRIDGE_WRITE_MODE: "workspace",
-      CODEXBRIDGE_BASH_MODE: "safe" }
+    env: { ...process.env, GCF_ROOT: root,
+      GCF_ALLOWED_ROOTS: root, GCF_WRITE_MODE: "workspace",
+      GCF_BASH_MODE: "safe" }
   }));
   const tools = (await client.listTools()).tools.map((x) => x.name);
   for (const name of ["read", "preview_change_set", "apply_change_set", "bash",
@@ -118,7 +118,7 @@ try {
   // A real second OS process executes the existing local CLI handoff adapter
   // against this disposable fixture, then the original MCP client reviews it.
   const localExecution = spawnSync(process.execPath, [
-    'scripts/codexbridge.mjs', 'execute-handoff', '--root', root,
+    'scripts/gcf.mjs', 'execute-handoff', '--root', root,
     '--agent', 'custom',
     '--command', `"${process.execPath.replaceAll('"', '\\"')}" fixture-review-agent.mjs --task-file {{plan_file}}`,
     '--yes'

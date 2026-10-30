@@ -42,8 +42,8 @@ async function client(name,write){
     command:process.execPath,
     args:[cli,'start','--manifest',manifest,'--transport','stdio','--write',write,'--bash','off'],
     cwd:repo,
-    env:{...process.env,CODEXBRIDGE_ALLOWED_ROOTS:forbidden,CODEXBRIDGE_ALLOW_HOME:'1',
-      CODEXBRIDGE_ROOT:forbidden}
+    env:{...process.env,GCF_ALLOWED_ROOTS:forbidden,GCF_ALLOW_HOME:'1',
+      GCF_ROOT:forbidden}
   }));
   connections.push(c);return c;
 }

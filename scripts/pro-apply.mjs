@@ -8,8 +8,8 @@ function usage() {
   console.log(`Apply a planning-model response to the agent handoff file
 
 Usage:
-  codexbridge pro-apply --root /path/to/repo --file plan.md
-  cat plan.md | codexbridge pro-apply --root /path/to/repo --stdin
+  gcf pro-apply --root /path/to/repo --file plan.md
+  cat plan.md | gcf pro-apply --root /path/to/repo --stdin
 
 Options:
   --root <dir>       Workspace root. Default: current directory.

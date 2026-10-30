@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0 — GPT Codex Flow (release candidate, not published)
+
+- Prepared the first formal GPT Codex Flow version; no Git tag, GitHub Release, or npm publication is implied by this heading.
+- Built a local-first MCP bridge with owner-approved projects, authenticated Control Center, scoped file access, Task Inbox and bidirectional ChatGPT/Codex handoffs.
+- Added optional per-project Codex model/reasoning preferences, explicit owner-reviewed native CLI execution, and optional agent-assisted Notion project-memory instructions.
+- Added source-closure, release-integrity, permission, handoff, browser UI, and privacy-oriented regression checks. The full independent selected-source installation and regression suite passed locally; owner privacy/publication approval and a post-push remote clean-clone verification remain pending.
+- Entered a v1.0.0 feature freeze on 2026-10-29: no new features or broad refactors before the first formal release; only verified release-blocking fixes.
+
+### Historical upstream entries (not GPT Codex Flow releases)
+
+The `0.28.x` notes below describe the inherited predecessor codebase. They are retained for provenance and should not be interpreted as GCF release tags.
+
 ## 0.28.5
 
 - Fixed path-scoped `show_changes` so unrelated workspace status is not reported for a clean requested path.

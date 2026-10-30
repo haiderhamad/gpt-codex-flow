@@ -13,8 +13,8 @@ const tmp=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'gcf-revoke-f
 const a=path.join(tmp,'Git-A'),b=path.join(tmp,'Git-B'),c=path.join(tmp,'Git-C');
 const manifest=path.join(tmp,'owner','projects.json');
 const launcher=path.join(sourceRoot,'scripts','gcf-cli.mjs');
-const env={...process.env,CODEXBRIDGE_ROOT:c,CODEXBRIDGE_ALLOWED_ROOTS:c,
-  CODEXBRIDGE_ALLOW_HOME:'1',NO_COLOR:'1'};
+const env={...process.env,GCF_ROOT:c,GCF_ALLOWED_ROOTS:c,
+  GCF_ALLOW_HOME:'1',NO_COLOR:'1'};
 function invoke(...args) {
   return spawnSync(process.execPath,[launcher,...args],{
     cwd:sourceRoot,env,encoding:'utf8',timeout:15000,maxBuffer:500000

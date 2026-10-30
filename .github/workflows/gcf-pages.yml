@@ -1,6 +1,6 @@
 # GPT Codex Flow public website. Manual-only: never deploy on git push.
-# This file is inert in the existing upstream repository. It can be used only
-# after the owner has created and reviewed the independent public product repo.
+# Deployment is manual and restricted to the named public product repository.
+# Source changes and pushes alone must never deploy the website.
 name: GPT Codex Flow — Pages (manual)
 
 on:

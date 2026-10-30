@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
-import type { CodexBridgeConfig, SshMode, SshProfileConfig } from "./config.js";
+import type { GcfConfig, SshMode, SshProfileConfig } from "./config.js";
 import { expandHome } from "./config.js";
-import { CodexBridgeError } from "./guard.js";
+import { GcfError } from "./guard.js";
 import { decideSshCommandPolicy, type PolicyDecision } from "./policy.js";
 import { redactSensitiveText } from "./redact.js";
 
@@ -47,21 +47,21 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", "'\"'\"'")}'`;
 }
 
-function effectiveMode(config: CodexBridgeConfig, profile: SshProfileConfig): SshMode {
+function effectiveMode(config: GcfConfig, profile: SshProfileConfig): SshMode {
   if (config.sshMode === "off") return "off";
   return profile.mode ?? config.sshMode;
 }
 
-function resolveProfile(config: CodexBridgeConfig, name: string): SshProfileConfig {
+function resolveProfile(config: GcfConfig, name: string): SshProfileConfig {
   const profile = config.sshProfiles[name];
-  if (!profile) throw new CodexBridgeError(`Unknown SSH profile: ${name}`);
+  if (!profile) throw new GcfError(`Unknown SSH profile: ${name}`);
   return profile;
 }
 
 function buildRemoteCommand(profile: SshProfileConfig, command: string, cwd?: string): string {
   const workdir = cwd?.trim() || profile.workdir?.trim();
   if (!workdir) return command.trim();
-  if (/[\n\r;&|<>`$]/.test(workdir)) throw new CodexBridgeError("SSH workdir contains unsupported shell metacharacters.");
+  if (/[\n\r;&|<>`$]/.test(workdir)) throw new GcfError("SSH workdir contains unsupported shell metacharacters.");
   return `cd ${shellQuote(workdir)} && ${command.trim()}`;
 }
 
@@ -91,7 +91,7 @@ function publicSshArgv(argv: string[]): string[] {
   return out.map((part) => redactSensitiveText(part));
 }
 
-export function listSshProfiles(config: CodexBridgeConfig): SshProfileSummary[] {
+export function listSshProfiles(config: GcfConfig): SshProfileSummary[] {
   return Object.values(config.sshProfiles)
     .map((profile) => ({
       name: profile.name,
@@ -106,7 +106,7 @@ export function listSshProfiles(config: CodexBridgeConfig): SshProfileSummary[] 
 }
 
 export async function runSshCommand(
-  config: CodexBridgeConfig,
+  config: GcfConfig,
   options: {
     profile: string;
     command: string;
@@ -120,9 +120,9 @@ export async function runSshCommand(
   const command = options.command.trim();
   const mode = effectiveMode(config, profile);
   const policy = decideSshCommandPolicy(mode, command);
-  if (policy.decision === "deny") throw new CodexBridgeError(policy.reason);
+  if (policy.decision === "deny") throw new GcfError(policy.reason);
   if (policy.decision === "ask" && !options.approved) {
-    throw new CodexBridgeError(`${policy.reason}\nRetry with approved=true only after explicit user approval.`);
+    throw new GcfError(`${policy.reason}\nRetry with approved=true only after explicit user approval.`);
   }
 
   const remoteCommand = buildRemoteCommand(profile, command, options.cwd);
@@ -179,7 +179,7 @@ export async function runSshCommand(
     child.on("error", reject);
     child.on("close", (exitCode, signal) => {
       clearTimeout(timer);
-      if (killedByTimeout) stderr += `\n[codexbridge] SSH command timed out after ${timeoutMs} ms.`;
+      if (killedByTimeout) stderr += `\n[gcf] SSH command timed out after ${timeoutMs} ms.`;
       const out = trimOutput(redactSensitiveText(stdout), config.maxOutputBytes);
       const err = trimOutput(redactSensitiveText(stderr), config.maxOutputBytes);
       resolve({

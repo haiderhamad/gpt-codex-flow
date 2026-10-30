@@ -36,26 +36,27 @@ async function unusedLocalPort():Promise<number>{
   await new Promise<void>((ok,no)=>listener.close(error=>error?no(error):ok()));
   return a.port;
 }
-function launcherEnvironment(projects:string[],port:number,token:string,access:CloudAccess):NodeJS.ProcessEnv{
+function launcherEnvironment(projects:string[],port:number,token:string,access:CloudAccess,leadManifest?:string):NodeJS.ProcessEnv{
   const base=Object.fromEntries(Object.entries(process.env).filter(([k])=>
-    !k.startsWith('CODEXBRIDGE_')&&!k.startsWith('CODEBASE_BRIDGE_')&&
+    !k.startsWith('GCF_')&&!k.startsWith('CODEBASE_BRIDGE_')&&
     !['NODE_OPTIONS','NODE_PATH','PORT','HOST'].includes(k)
   ));
   const mode=CLOUD_ACCESS_MODES[access];
-  return {...base,CODEXBRIDGE_ROOT:projects[0],CODEXBRIDGE_ALLOWED_ROOTS:projects.join(path.delimiter),
-    CODEXBRIDGE_ALLOW_HOME:'0',CODEXBRIDGE_HOST:'127.0.0.1',
-    CODEXBRIDGE_PORT:String(port),CODEXBRIDGE_TUNNEL_MODE:'1',
-    CODEXBRIDGE_HTTP_AUTH_MODE:'legacy',
-    CODEXBRIDGE_HTTP_TOKEN:token,
-    CODEXBRIDGE_WRITE_MODE:mode.write,CODEXBRIDGE_BASH_MODE:mode.bash,
-    CODEXBRIDGE_INHERIT_ENV:'0',CODEXBRIDGE_CODEX_SESSIONS:'off'};
+  return {...base,GCF_ROOT:projects[0],GCF_ALLOWED_ROOTS:projects.join(path.delimiter),
+    GCF_ALLOW_HOME:'0',GCF_HOST:'127.0.0.1',
+    GCF_PORT:String(port),GCF_TUNNEL_MODE:'1',
+    GCF_HTTP_AUTH_MODE:'legacy',
+    GCF_HTTP_TOKEN:token,
+    GCF_WRITE_MODE:mode.write,GCF_BASH_MODE:mode.bash,
+    GCF_INHERIT_ENV:'0',GCF_CODEX_SESSIONS:'off',
+    ...(leadManifest?{GCF_OWNER_LEAD_MANIFEST:leadManifest}:{})};
 }
 function cloudflaredBinary():string{
   const binary=process.platform==='win32'?'cloudflared.exe':'cloudflared';
-  const local=path.join(os.homedir(),'.codexbridge','bin',binary);
+  const local=path.join(os.homedir(),'.gcf','bin',binary);
   return fs.existsSync(local)?local:binary;
 }
-export function createCloudflareLauncher(sourceRoot:string,options:{cloudflaredPath?:string}={}):CloudLauncher{
+export function createCloudflareLauncher(sourceRoot:string,options:{cloudflaredPath?:string;leadManifest?:string}={}):CloudLauncher{
   let server:ChildProcess|null=null, tunnel:ChildProcess|null=null;
   let state:CloudState={state:'stopped',message:'Not running'};
   let generation=0;
@@ -89,7 +90,7 @@ export function createCloudflareLauncher(sourceRoot:string,options:{cloudflaredP
         const token=randomBytes(32).toString('hex');
         const local='http://127.0.0.1:'+port;
         server=spawn(process.execPath,[path.join(sourceRoot,'dist','http.js')],{
-          cwd:sourceRoot,env:launcherEnvironment(approved,port,token,access),stdio:['ignore','ignore','pipe'],shell:false
+          cwd:sourceRoot,env:launcherEnvironment(approved,port,token,access,options.leadManifest),stdio:['ignore','ignore','pipe'],shell:false
         });
         observe(server,'Local MCP',epoch);
         // Do not forward raw output: errors may contain private paths or credentials.
@@ -108,7 +109,7 @@ export function createCloudflareLauncher(sourceRoot:string,options:{cloudflaredP
         if(epoch!==generation)throw Error('Connection stopped.');
         state={state:'starting',project,projects:approved,access,message:'Opening Cloudflare Quick Tunnel…'};
         const publicHost=await new Promise<string>((resolve,reject)=>{
-          const child=spawn(options.cloudflaredPath??cloudflaredBinary(),['tunnel','--url',local],{cwd:sourceRoot,env:Object.fromEntries(Object.entries(process.env).filter(([k])=>!k.startsWith('CODEXBRIDGE_')&&!k.startsWith('CODEBASE_BRIDGE_'))),stdio:['ignore','ignore','pipe'],shell:false});
+          const child=spawn(options.cloudflaredPath??cloudflaredBinary(),['tunnel','--url',local],{cwd:sourceRoot,env:Object.fromEntries(Object.entries(process.env).filter(([k])=>!k.startsWith('GCF_')&&!k.startsWith('CODEBASE_BRIDGE_'))),stdio:['ignore','ignore','pipe'],shell:false});
           tunnel=child;observe(child,'Cloudflare',epoch);
           let partial='';
           let settled=false;

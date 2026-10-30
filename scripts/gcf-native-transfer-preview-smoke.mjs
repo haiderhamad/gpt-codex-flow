@@ -51,7 +51,7 @@ try{
    args:['dist/stdio.js','--root',root,'--allow-root',root,
      '--tool-mode','standard','--write','workspace','--bash','off'],
    cwd:process.cwd(),
-   env:{...process.env,CODEXBRIDGE_ROOT:root,CODEXBRIDGE_ALLOWED_ROOTS:root}
+   env:{...process.env,GCF_ROOT:root,GCF_ALLOWED_ROOTS:root}
  }));
  const request=await client.callTool({name:'request_transfer',
    arguments:{task_id:taskId,from:'chatgpt_lead',to:'codex_lead',user_confirmed:true}});

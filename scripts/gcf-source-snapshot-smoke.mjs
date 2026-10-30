@@ -30,7 +30,7 @@ function safeEnv(temp) {
   return {
     PATH:process.env.PATH??'/usr/bin:/bin',
     HOME:temp,TMPDIR:temp,LANG:'C',LC_ALL:'C',NO_COLOR:'1',
-    CODEXBRIDGE_ALLOW_HOME:'0',CODEXBRIDGE_ALLOWED_ROOTS:'',
+    GCF_ALLOW_HOME:'0',GCF_ALLOWED_ROOTS:'',
     CODEBASE_BRIDGE_ALLOWED_ROOTS:''
   };
 }

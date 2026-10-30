@@ -36,7 +36,7 @@ async function clientFor(root,name,write){
     command:process.execPath,
     args:[path.join(bridge,'dist','stdio.js'),'--root',root,'--allow-root',root,
       '--tool-mode','standard','--write',write,'--bash','off'],
-    cwd:bridge,env:{...process.env,CODEXBRIDGE_ROOT:root,CODEXBRIDGE_ALLOWED_ROOTS:root}
+    cwd:bridge,env:{...process.env,GCF_ROOT:root,GCF_ALLOWED_ROOTS:root}
   }));
   return client;
 }

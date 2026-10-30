@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
-import { createCodexBridgeServer } from "./server.js";
+import { createGcfServer } from "./server.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const server = createCodexBridgeServer(config);
+  const server = createGcfServer(config);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

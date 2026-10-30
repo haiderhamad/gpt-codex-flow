@@ -24,7 +24,7 @@ export function chatgptQuickConnectReadiness(
   const compiled = fs.existsSync(path.join(sourceRoot,'dist','http.js'));
   checks.push({key:'server',label:'Local MCP build is available',ready:compiled});
   let cloudflared = false;
-  try {cloudflared = probeCloudflared() || fs.existsSync(path.join(os.homedir(),'.codexbridge','bin',process.platform==='win32'?'cloudflared.exe':'cloudflared'));} catch {/* Missing binary is not a connection failure. */}
+  try {cloudflared = probeCloudflared() || fs.existsSync(path.join(os.homedir(),'.gcf','bin',process.platform==='win32'?'cloudflared.exe':'cloudflared'));} catch {/* Missing binary is not a connection failure. */}
   checks.push({key:'cloudflared',label:'Cloudflare Quick Tunnel is installed',ready:cloudflared});
   // Manual Cloudflare Quick Tunnel already uses a GCF access token in its URL.
   // ChatGPT's "No authentication" means no OAuth handshake, NOT anonymous MCP access.

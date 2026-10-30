@@ -1,4 +1,4 @@
-export const TOOL_CARD_URI = "ui://widget/codexbridge-tool-card-v1.html";
+export const TOOL_CARD_URI = "ui://widget/gcf-tool-card-v2.html";
 export const TOOL_CARD_MIME_TYPE = "text/html;profile=mcp-app";
 
 export const toolCardWidgetHtml = String.raw`
@@ -389,13 +389,13 @@ export const toolCardWidgetHtml = String.raw`
     max-width: 78%;
     border-radius: 999px;
     background: linear-gradient(90deg, rgba(148, 163, 184, 0.12), rgba(148, 163, 184, 0.22), rgba(148, 163, 184, 0.12));
-    animation: codexbridge-sheen 1.55s ease-in-out infinite;
+    animation: gcf-sheen 1.55s ease-in-out infinite;
   }
 
   .skeleton span:nth-child(2) { max-width: 52%; animation-delay: 0.12s; }
   .skeleton span:nth-child(3) { max-width: 66%; animation-delay: 0.24s; }
 
-  @keyframes codexbridge-sheen {
+  @keyframes gcf-sheen {
     0%, 100% { opacity: 0.46; transform: translateX(0); }
     50% { opacity: 1; transform: translateX(2px); }
   }
@@ -448,8 +448,8 @@ export const toolCardWidgetHtml = String.raw`
   function titleFor(tool) {
     const titles = {
       server_config: "Server config",
-      codexbridge_self_test: "Self-test",
-      codexbridge_inventory: "Inventory",
+      gcf_self_test: "Self-test",
+      gcf_inventory: "Inventory",
       load_skill: "Skill",
       list_workspaces: "Workspaces",
       open_current_workspace: "Workspace",
@@ -475,8 +475,8 @@ export const toolCardWidgetHtml = String.raw`
 
   function iconFor(tool) {
     if (tool === "server_config") return "S";
-    if (tool === "codexbridge_self_test") return "T";
-    if (tool === "codexbridge_inventory") return "I";
+    if (tool === "gcf_self_test") return "T";
+    if (tool === "gcf_inventory") return "I";
     if (tool === "load_skill") return "L";
     if (tool === "list_workspaces") return "W";
     if (tool === "open_current_workspace" || tool === "open_workspace") return "W";
@@ -497,32 +497,37 @@ export const toolCardWidgetHtml = String.raw`
     return "C";
   }
 
+  // Old cached tool results remain renderable without publishing their legacy keys.
+  function toolFor(data) {
+    return data?.gcf_tool ?? data?.gcf_tool;
+  }
+
   function subtitleFor(data) {
-    if (data?.codexbridge_tool === "open_current_workspace" || data?.codexbridge_tool === "open_workspace") {
+    if (toolFor(data) === "open_current_workspace" || toolFor(data) === "open_workspace") {
       return data?.root || "Workspace opened";
     }
-    if (data?.codexbridge_tool === "show_changes") {
+    if (toolFor(data) === "show_changes") {
       if (data?.status_error || data?.diff_error) return "Git state unavailable";
       const count = Array.isArray(data?.changed_files) ? data.changed_files.length : 0;
       if (!count && !data?.changed) return "Workspace is clean";
       return count === 1 ? "1 changed file" : count + " changed files";
     }
-    if (data?.codexbridge_tool === "codexbridge_self_test") return data?.status ? "Status " + data.status : "Local diagnostic";
-    if (data?.codexbridge_tool === "codexbridge_inventory") return (data?.skill_count ?? 0) + " skills, " + (data?.mcp_server_count ?? 0) + " MCP servers";
-    if (data?.codexbridge_tool === "list_workspaces") return (data?.count ?? 0) + " open workspaces";
-    if (data?.codexbridge_tool === "server_config") {
+    if (toolFor(data) === "gcf_self_test") return data?.status ? "Status " + data.status : "Local diagnostic";
+    if (toolFor(data) === "gcf_inventory") return (data?.skill_count ?? 0) + " skills, " + (data?.mcp_server_count ?? 0) + " MCP servers";
+    if (toolFor(data) === "list_workspaces") return (data?.count ?? 0) + " open workspaces";
+    if (toolFor(data) === "server_config") {
       const session = data?.bashSessionId || data?.bash_session_id;
       return "tools " + (data?.toolMode || data?.tool_mode || "-") + ", bash " + (data?.bashMode || data?.bash_mode || "-") + (session ? ", session " + session : "");
     }
-    if (data?.codexbridge_tool === "workspace_snapshot") return data?.root || "Workspace snapshot";
-    if (data?.codexbridge_tool === "git_status") {
+    if (toolFor(data) === "workspace_snapshot") return data?.root || "Workspace snapshot";
+    if (toolFor(data) === "git_status") {
       const count = Array.isArray(data?.changed_files) ? data.changed_files.length : 0;
       return count ? count + " changed entries" : "Working tree clean";
     }
-    if (data?.codexbridge_tool === "codex_context") return (data?.agents_files?.length ?? 0) + " AGENTS, " + (data?.ai_context_files?.length ?? 0) + " bridge files";
-    if (data?.codexbridge_tool === "read_handoff") return (data?.file_count ?? 0) + " bridge files";
-    if (data?.codexbridge_tool === "load_skill" && data?.skill?.name) return data.skill.name;
-    if (data?.codexbridge_tool === "handoff_to_agent" && data?.agent_name) return data.agent_name;
+    if (toolFor(data) === "codex_context") return (data?.agents_files?.length ?? 0) + " AGENTS, " + (data?.ai_context_files?.length ?? 0) + " bridge files";
+    if (toolFor(data) === "read_handoff") return (data?.file_count ?? 0) + " bridge files";
+    if (toolFor(data) === "load_skill" && data?.skill?.name) return data.skill.name;
+    if (toolFor(data) === "handoff_to_agent" && data?.agent_name) return data.agent_name;
     if (data?.path) return data.path;
     if (data?.plan_path) return data.plan_path;
     if (data?.root) return data.root;
@@ -535,7 +540,7 @@ export const toolCardWidgetHtml = String.raw`
   }
 
   function header(data, pills) {
-    const tool = data?.codexbridge_tool;
+    const tool = toolFor(data);
     return [
       '<div class="rail"></div>',
       '<header class="head">',
@@ -868,7 +873,7 @@ export const toolCardWidgetHtml = String.raw`
   }
 
   function renderGeneric(data) {
-    const keys = Object.keys(data || {}).filter((key) => !key.startsWith("codexbridge_"));
+    const keys = Object.keys(data || {}).filter((key) => !key.startsWith("gcf_") && !key.startsWith("gcf_"));
     const metrics = keys.slice(0, 3).map((key) => metric(key, typeof data[key] === "object" ? JSON.stringify(data[key]) : data[key])).join("");
     return '<article class="card">' + header(data, pill("structured", "info")) +
       '<div class="body">' + (metrics ? '<div class="metrics">' + metrics + '</div>' : '') +
@@ -879,7 +884,7 @@ export const toolCardWidgetHtml = String.raw`
   function isPlaceholderPayload(data) {
     if (!data || typeof data !== "object") return true;
     const keys = Object.keys(data);
-    return !keys.length || (keys.length === 1 && data.codexbridge_tool === "codexbridge");
+    return !keys.length || (keys.length === 1 && toolFor(data) === "gcf");
   }
 
   function renderPending() {
@@ -901,12 +906,12 @@ export const toolCardWidgetHtml = String.raw`
       renderPending();
       return;
     }
-    const tool = data.codexbridge_tool;
+    const tool = toolFor(data);
     if (tool === "server_config") {
       root.innerHTML = renderServerConfig(data);
-    } else if (tool === "codexbridge_self_test") {
+    } else if (tool === "gcf_self_test") {
       root.innerHTML = renderSelfTest(data);
-    } else if (tool === "codexbridge_inventory") {
+    } else if (tool === "gcf_inventory") {
       root.innerHTML = renderInventory(data);
     } else if (tool === "list_workspaces") {
       root.innerHTML = renderWorkspaces(data);

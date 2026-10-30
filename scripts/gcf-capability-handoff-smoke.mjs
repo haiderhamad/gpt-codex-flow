@@ -55,8 +55,8 @@ async function connect(name,write){
     command:process.execPath,
     args:[cli,'start','--manifest',manifest,'--transport','stdio','--write',write,'--bash','off'],
     cwd:rootDir,
-    env:{...process.env,CODEXBRIDGE_ROOT:disallowed,CODEXBRIDGE_ALLOWED_ROOTS:disallowed,
-      CODEBASE_BRIDGE_ALLOWED_ROOTS:disallowed,CODEXBRIDGE_ALLOW_HOME:'1'}
+    env:{...process.env,GCF_ROOT:disallowed,GCF_ALLOWED_ROOTS:disallowed,
+      CODEBASE_BRIDGE_ALLOWED_ROOTS:disallowed,GCF_ALLOW_HOME:'1'}
   }));
   sockets.push(c);return c;
 }

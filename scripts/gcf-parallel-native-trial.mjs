@@ -63,8 +63,8 @@ async function mcpPeerEdit(chatgpt) {
      args:['dist/stdio.js','--root',chatgpt,'--allow-root',chatgpt,
        '--tool-mode','standard','--write','workspace','--bash','off'],
      cwd:path.resolve('.'),
-     env:{...process.env,CODEXBRIDGE_ROOT:chatgpt,
-       CODEXBRIDGE_ALLOWED_ROOTS:chatgpt,CODEXBRIDGE_BASH_MODE:'off'}
+     env:{...process.env,GCF_ROOT:chatgpt,
+       GCF_ALLOWED_ROOTS:chatgpt,GCF_BASH_MODE:'off'}
    }));
    const reply=await client.callTool({name:'edit',arguments:{
      path:'src/ui.txt',old_text:'ui before',new_text:'ui after'

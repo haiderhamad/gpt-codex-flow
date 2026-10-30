@@ -106,8 +106,8 @@ try{
      args:['dist/stdio.js','--root',base,'--allow-root',base,
        '--write','workspace','--bash','off','--tool-mode','standard'],
      cwd:process.cwd(),
-     env:{...process.env,CODEXBRIDGE_ROOT:base,CODEXBRIDGE_ALLOWED_ROOTS:base,
-       CODEXBRIDGE_BASH_MODE:'off'}
+     env:{...process.env,GCF_ROOT:base,GCF_ALLOWED_ROOTS:base,
+       GCF_BASH_MODE:'off'}
    }));
    const response=await observer.callTool({name:'parallel_session_status',arguments:{}});
    assert.equal(Boolean(response.isError),false,JSON.stringify(response));

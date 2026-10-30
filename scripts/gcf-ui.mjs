@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {startControlCenter} from '../dist/gcfControlCenter.js';
 const args=process.argv.slice(2);
-let manifest=path.join(process.env.CODEXBRIDGE_HOME ? path.resolve(process.env.CODEXBRIDGE_HOME) : path.join(os.homedir(),'.codexbridge'),'gpt-codex-flow','projects.json');
+let manifest=path.join(process.env.GCF_HOME ? path.resolve(process.env.GCF_HOME) : path.join(os.homedir(),'.gcf'),'gpt-codex-flow','projects.json');
 let port=0, open=true;
 for(let i=0;i<args.length;i++) {
   if(args[i]==='--no-open') open=false;

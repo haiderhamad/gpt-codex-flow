@@ -16,11 +16,11 @@ async function getFreePort() {
   });
 }
 
-const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-doctor-smoke-'));
-const home = await fs.mkdtemp(path.join(os.tmpdir(), 'codexbridge-doctor-home-'));
+const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-doctor-smoke-'));
+const home = await fs.mkdtemp(path.join(os.tmpdir(), 'gcf-doctor-home-'));
 const port = await getFreePort();
 const result = spawnSync(process.execPath, [
-  'scripts/codexbridge.mjs',
+  'scripts/gcf.mjs',
   'doctor',
   '--root',
   root,
@@ -30,7 +30,7 @@ const result = spawnSync(process.execPath, [
   'none'
 ], {
   cwd: path.resolve('.'),
-  env: { ...process.env, CODEXBRIDGE_HOME: home },
+  env: { ...process.env, GCF_HOME: home },
   encoding: 'utf8'
 });
 

@@ -1,11 +1,18 @@
 # Changelog
 
-## 1.0.0 — GPT Codex Flow (release candidate, not published)
+## 1.0.1 — Documentation and onboarding improvements
 
-- Prepared the first formal GPT Codex Flow version; no Git tag, GitHub Release, or npm publication is implied by this heading.
+- Simplified and reorganized the README, including clearer installation, optional Codex CLI, Notion Memory, security and upgrade guidance.
+- Streamlined the static Landing copy, removed duplicate setup commands, and clarified prerequisites, ChatGPT connection verification, and advisory Lead mode.
+- Kept existing animated diagrams and Control Center UI unchanged; strengthened Landing Copy, navigation and responsive-browser regression checks.
+- Includes the separately authorized optional Notion Memory diagram previously published on `main`. No new runtime features or automatic Notion sync; npm package remains unpublished.
+
+## 1.0.0 — GPT Codex Flow (published 2026-10-30)
+
+- Published the first tagged GPT Codex Flow source release and GitHub Release. No npm publication.
 - Built a local-first MCP bridge with owner-approved projects, authenticated Control Center, scoped file access, Task Inbox and bidirectional ChatGPT/Codex handoffs.
 - Added optional per-project Codex model/reasoning preferences, explicit owner-reviewed native CLI execution, and optional agent-assisted Notion project-memory instructions.
-- Added source-closure, release-integrity, permission, handoff, browser UI, and privacy-oriented regression checks. The full independent selected-source installation and regression suite passed locally; owner privacy/publication approval and a post-push remote clean-clone verification remain pending.
+- Added source-closure, release-integrity, permission, handoff, browser UI, and privacy-oriented regression checks. The full independent selected-source installation and regression suite passed locally; owner-reviewed public-source assets and the post-push remote clean-clone verification subsequently passed.
 - Entered a v1.0.0 feature freeze on 2026-10-29: no new features or broad refactors before the first formal release; only verified release-blocking fixes.
 
 ### Historical upstream entries (not GPT Codex Flow releases)

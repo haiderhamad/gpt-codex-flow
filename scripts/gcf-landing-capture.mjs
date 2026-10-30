@@ -42,7 +42,7 @@ try{
     assert.equal(await evaluate(`document.querySelector('.illustration figcaption')`),null,'no hero caption');
     assert.ok(await evaluate(`[...document.querySelectorAll('.scene-image,.usecase-visual,.memory-visual')].every(img=>img.getAttribute('src').endsWith('#paused'))`),'reduced-motion SVGs pause');
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('.site-header')).position`),'sticky','header stays sticky');
-    for(const target of ['workflow','capabilities','connect','dashboard']){
+    for(const target of ['workflow','capabilities','access-levels','connect','dashboard']){
       const measure=await evaluate(`(async()=>{
         const link=document.querySelector('.site-header a[href="#${target}"]');
         if(!link || getComputedStyle(link).display==='none')return {error:'link hidden'};
@@ -50,14 +50,14 @@ try{
         await new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done)));
         const header=document.querySelector('.site-header').getBoundingClientRect();
         const section=document.getElementById('${target}').getBoundingClientRect();
-        const heading=document.querySelector('#${target} h2').getBoundingClientRect();
+        const heading=document.querySelector('#${target} h2, #${target} h3').getBoundingClientRect();
         return {hash:location.hash,headerTop:header.top,headerBottom:header.bottom,sectionTop:section.top,headingTop:heading.top,scrollY,maxScroll:document.documentElement.scrollHeight-innerHeight};
       })()`);
       assert.equal(measure.error,undefined,`${size}: navigation link to ${target} must be visible`);
       assert.equal(measure.hash,'#'+target,`${size}: URL hash for ${target}`);
       assert.ok(Math.abs(measure.headerTop)<=2,`${size}: sticky header for ${target}: ${JSON.stringify(measure)}`);
       assert.ok(measure.headingTop>=measure.headerBottom-2,`${size}: ${target} heading covered by sticky header: ${JSON.stringify(measure)}`);
-      assert.ok(measure.headingTop<measure.headerBottom+32,`${size}: ${target} has excess blank scroll offset: ${JSON.stringify(measure)}`);
+      assert.ok(measure.headingTop<measure.headerBottom+(target==='access-levels'?48:32),`${size}: ${target} has excess blank scroll offset: ${JSON.stringify(measure)}`);
     }
     await evaluate(`history.replaceState(null,'',location.pathname);scrollTo(0,0)`);
    await shot(`${surface}-${size}`);await shot(`${surface}-${size}-full`,true);
@@ -68,7 +68,7 @@ try{
     assert.equal(await evaluate(`document.querySelectorAll('[data-connect]').length`),0,'no obsolete connection tabs');
     assert.ok(await evaluate(`document.querySelector('.connect-panel').textContent.includes('Cloudflare Quick Tunnel')`));
     assert.equal(await evaluate(`document.querySelectorAll('[data-connect]').length`),0);
-    await evaluate(`Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__copied=value}}});document.querySelector('[data-copy="conncode"]').click()`);await wait(40);
+    await evaluate(`Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async value=>{window.__copied=value}}});document.querySelector('[data-copy="approve-preview"]').click()`);await wait(40);
     assert.match(await evaluate('window.__copied'),/npm run gcf:ui/);
     await evaluate('window.scrollTo(0,0)');
    }

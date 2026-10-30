@@ -1,6 +1,6 @@
 {
   "name": "@haiderhamad/gpt-codex-flow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local-first, bidirectional ChatGPT and Codex coding handoffs for owner-approved workspace folders via MCP.",
   "type": "module",
   "license": "MIT",

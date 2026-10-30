@@ -25,9 +25,9 @@ See [README](README.md) for installation, new-machine setup and the supported Cl
 - Review `git diff --check` and the complete intended source/asset/test change list. Do not include personal paths, tokens, accounts, local task Inbox, `.env`, generated `dist/` or `node_modules/`.
 - For README, Landing and Control Center changes, verify relative links, responsive layouts and accessibility. Never claim capabilities that are only proposed, such as macOS autostart, general Multi-Queue or browser-native worker controls.
 
-## v1.0.0 release-candidate freeze (decided 2026-10-29)
+## v1.0.0 freeze (historical)
 
-The local `v1.0.0` source is in **feature freeze**, not publicly released. Defer new product features, sweeping cleanup, dependency churn and cosmetic redesigns until a later version. Accept only narrowly scoped, evidence-backed fixes needed for safe v1.0.0 publication (security, broken install/runtime, essential documentation or regression). Record why the exception is release-blocking and rerun relevant tests, including the independent source-candidate suite when the source selection changes. A working-tree snapshot or successful test **does not** create an immutable release or authorize a Git operation. The author-email privacy decision, complete public-asset approval and real remote fresh-clone gate still require separate review; see [current status](docs/GCF_PROJECT_STATUS.md).
+The `v1.0.0` GitHub Release was published on 2026-10-30 after privacy review, source verification, GitHub CI and an independent remote fresh-clone check. Preserve the existing tag and history. Subsequent focused README, Landing and test improvements belong to `v1.0.1`; changing source or passing tests never authorizes publication by itself. See [current status](docs/GCF_PROJECT_STATUS.md).
 
 ## Publishing and release boundaries
 

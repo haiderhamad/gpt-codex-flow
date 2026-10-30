@@ -777,7 +777,7 @@ export function createGcfServer(config: GcfConfig): McpServer {
   const workspaces = getSharedWorkspaceManager(config);
   const aliases = new ProjectAliasRegistry(config.projectAliasFile);
   const guard = new PathGuard(config);
-  const server = new McpServer({ name: "GPT Codex Flow", version: "1.0.0" }, { instructions: serverInstructions(config) });
+  const server = new McpServer({ name: "GPT Codex Flow", version: "1.0.1" }, { instructions: serverInstructions(config) });
   registerToolCardResource(server, config);
 
   registerCodexTool(

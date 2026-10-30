@@ -106,7 +106,15 @@ assert.doesNotMatch(site,/data-connect=|Local MCP over HTTP|Cloudflare Named Tun
 assert.match(site,/Cloudflare Quick Tunnel/, 'Cloudflare Quick is primary connection');
 assert.match(site, /navigator\.clipboard\.writeText/, "copy handlers must exist");
 const copyIds = [...site.matchAll(/<button[^>]+class="copy"[^>]+data-copy="([^"]+)"/g)].map((m) => m[1]);
-assert.ok(copyIds.length >= 4, "expected working setup Copy buttons");
+assert.deepEqual(copyIds, ["prepare", "approve-preview", "guide"], "three unique setup Copy controls");
+assert.equal((site.match(/npm run gcf:ui/g)||[]).length, 1, "Control Center start command must not be duplicated");
+assert.equal((site.match(/npm run gcf:doctor/g)||[]).length, 1, "Optional doctor command must not be duplicated");
+assert.match(site, /developers\.cloudflare\.com\/tunnel\/downloads\//, "Landing must link to cloudflared prerequisite");
+assert.match(site, /ChatGPT custom MCP support/, "Landing must disclose ChatGPT MCP connection requirement");
+assert.match(site, /No authentication/, "ChatGPT authentication selection must be explicit");
+assert.match(site, /<code>list_projects<\/code>/, "Landing must explain connection verification");
+assert.match(site, /<code>project_summary<\/code>/, "Landing must explain approved project verification");
+assert.match(site, /href="#access-levels">Permissions<\/a>/, "Navigation must expose permissions");
 for (const id of copyIds) assert.ok(site.includes(`id="${id}"`), `broken Copy target ${id}`);
 assert.match(site, /previous isolated ChatGPT connection succeeded/, "Cloudflare evidence must remain qualified");
 assert.match(readme, /Codex.*sandbox|sandbox.*Codex/is, 'README must explain native Codex sandbox boundaries');

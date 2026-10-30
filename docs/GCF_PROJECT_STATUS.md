@@ -1,5 +1,12 @@
 # GPT Codex Flow — current status
 
+## 2026-10-30 — v1.0.1 documentation and Landing release candidate (IMPLEMENTED LOCALLY / TESTING)
+
+- **Scope:** improved README, public Landing copy, Landing regression tests, package/lock/MCP server version parity, and historical release documentation. Reuses the already published optional Notion Memory SVG; no changes to original GIF, SVG animations or runtime behavior beyond version metadata.
+- **Version:** target `1.0.1`; keep the published `v1.0.0` tag unchanged. GitHub Release, push and manual Pages deployment require independent verification; npm publication is not planned.
+- **Verification:** local isolated source installation/build/Core, real Chrome responsive browser and GitHub CI should pass for the exact selected source before completion. Distinguish local candidate tests from verified remote publication.
+
+
 ## 2026-10-30 — Final pre-release code, documentation and Landing audit (REVIEWED / TARGETED FIXES VERIFIED / UNRELEASED)
 
 - **Code/security review:** inspected current source boundaries for owner-authenticated Control Center + CSRF, Cloudflare Quick launcher, HTTP Origin/Host/bearer enforcement, owner-only Codex model settings, native Codex consent/argv handling, rendered tool-card escaping, the source selection and CI/Pages workflows. This is a source-focused review and regression run, **not** full formal security pen-testing or exhaustive line-by-line review of all changed files. No new verified exploitable vulnerability was established in the inspected paths.

@@ -11,6 +11,7 @@ const theme = file("theme-light.css");
 const architecture = file("architecture-light.svg");
 const useCases = file("use-case-flow.svg");
 const logo = file("brand-mark.svg");
+const notionMemory = file("notion-memory-flow.svg");
 const readme = readFileSync(resolve(repo, "README.md"), "utf8");
 const packageJson = JSON.parse(readFileSync(resolve(repo, "package.json"), "utf8"));
 for (const [readmeText, referenceBase] of [
@@ -30,12 +31,12 @@ for (const reference of localReferences) {
 }
 
 assert.equal((site.match(/<section\b/g) || []).length, (site.match(/<\/section>/g) || []).length, "section tags must balance");
-for (const asset of ["theme-light.css", "brand-mark.svg", "architecture-light.svg", "use-case-flow.svg"]) {
+for (const asset of ["theme-light.css", "brand-mark.svg", "architecture-light.svg", "use-case-flow.svg", "notion-memory-flow.svg"]) {
   assert.ok(site.includes("./" + asset), `missing site link to ${asset}`);
   assert.ok(existsSync(resolve(base, asset)), `broken local asset ${asset}`);
 }
 assert.ok(readme.includes("gcf-preview/architecture-overview.gif"), "README must reference the shipped architecture-overview.gif");
-for (const svg of [architecture, useCases, logo]) {
+for (const svg of [architecture, useCases, notionMemory, logo]) {
   assert.match(svg, /^<svg\b/);
   assert.match(svg.trim(), /<\/svg>$/);
   assert.match(svg, /<title\b/);
@@ -51,7 +52,7 @@ for (const name of ["architecture-light.svg"]) {
 assert.match(architecture, /stroke-dashoffset|animation:signal/, "architecture should show motion");
 assert.match(useCases, /animation:move/, "use cases should have restrained signal motion");
 assert.match(theme, /prefers-reduced-motion/, "respect accessible reduced-motion settings");
-for (const svg of [architecture,useCases]) {
+for (const svg of [architecture,useCases,notionMemory]) {
   assert.match(svg,/prefers-reduced-motion/,'each external image controls its own motion');
   assert.match(svg,/:root:target/,'a paused SVG fragment must stop animation');
   assert.doesNotMatch(svg,/<script\b|<foreignObject\b|(?:href|src)=["']https?:/i,'SVGs must be self-contained');
@@ -86,6 +87,16 @@ assert.equal((site.match(/data-label="Write Handoff" class="access-yes">Yes/g)||
 assert.match(site,/\.ai-bridge\//,"Landing must explain the scoped Read Only handoff exception");
 assert.match(readme,/Handoff notes remain writable in every access level/,"README must separate access from handoff");
 assert.match(readme,/ChatGPT's own approval settings do not replace server permissions/,"README must explain independent permission enforcement");
+assert.match(site, /id="notion-memory"/, "Landing must describe optional Notion project memory");
+assert.match(site, /src="\.\/notion-memory-flow\.svg"/, "Landing must embed the shared animated Notion diagram");
+assert.match(readme, /src="docs\/gcf-preview\/notion-memory-flow\.svg"/, "README must embed the same Notion diagram");
+assert.match(notionMemory, /ChatGPT and Codex both exchange tasks/, "Diagram must show both clients");
+assert.match(notionMemory, /@media\(prefers-reduced-motion:reduce\)/, "Notion diagram must honor reduced motion");
+assert.match(notionMemory, /No background sync/, "Diagram must not imply automatic Notion synchronization");
+assert.match(notionMemory, /animation:memory-flow/, "Notion connection should animate independently of the main diagram");
+assert.match(site, /No automatic background sync/, "Notion memory must not imply automatic synchronization");
+assert.match(site, /github\.com\/haiderhamad\/gpt-codex-flow#optional-agent-assisted-notion-project-memory/, "Landing must link to the README Notion setup");
+assert.match(readme, /Notion never blocks GCF/, "README must distinguish Notion documentation from core Handoff");
 assert.match(site, /id="dashboard"/);
 assert.match(site, /screenshots\/control-center-demo\.png/, 'Landing must show current Control Center, not obsolete Admin');
 assert.match(readme, /screenshots\/control-center-demo\.png/, 'README must show current Control Center');
@@ -117,4 +128,4 @@ assert.match(adminSource, /Full Access risk/,
   "Control Center must display the Full Access risk");
 
 
-console.log(`GPT Codex Flow static landing checks passed: ${copyIds.length} copy controls; four local assets; responsive light theme; two SVG visuals; qualified connection and security wording.`);
+console.log(`GPT Codex Flow static landing checks passed: ${copyIds.length} copy controls; five local assets; responsive light theme; three SVG visuals (including optional Notion memory); qualified connection and security wording.`);

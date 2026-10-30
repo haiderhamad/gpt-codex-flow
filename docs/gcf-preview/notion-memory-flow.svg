@@ -1,0 +1,50 @@
+<svg id="paused" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
+<title id="title">GPT Codex Flow with optional Notion project memory</title>
+<desc id="desc">ChatGPT and Codex both exchange tasks through GPT Codex Flow. GCF accesses an approved local project, then developers review Git changes and resume tasks. Separately, either authorized client can optionally maintain long-term verified project knowledge in Notion; Notion is not connected automatically and never owns live handoffs. Solid arrows describe core GCF work. Dashed animated arrows describe optional client-authorized Notion documentation.</desc>
+<style>
+text{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;fill:#213c53}
+.label{font-size:22px;font-weight:750}.sub{font-size:16px;fill:#4c6b80}.eyebrow{font-size:13px;fill:#39778a;font-weight:750;letter-spacing:.09em}
+.card{fill:#fff;stroke:#bfd5e4;stroke-width:1.7}.hub{fill:#e8f4f8;stroke:#77abbc;stroke-width:2}.memory{fill:#f6f9fd;stroke:#92b0cc;stroke-width:1.9}
+.core{fill:none;stroke:#347f94;stroke-width:3.1;stroke-linecap:round;marker-end:url(#arrow)}
+.both{marker-start:url(#arrow)}
+.optional{fill:none;stroke:#638fb4;stroke-width:2.6;stroke-linejoin:round;stroke-dasharray:7 9;marker-end:url(#memory-arrow);animation:memory-flow 15s linear infinite}
+.active{animation:task-glow 5s ease-in-out infinite}
+.glow{fill:#308ea4;animation:pulse 4s ease-in-out infinite}
+@keyframes task-glow{0%,100%{stroke:#347f94}50%{stroke:#58a2b7}}
+@keyframes memory-flow{to{stroke-dashoffset:-192}}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+:root:target .optional,:root:target .active,:root:target .glow{animation:none}
+@media(prefers-reduced-motion:reduce){.optional,.active,.glow{animation:none}}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1L9 5 1 9Z" fill="#347f94"/></marker>
+<marker id="memory-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 1L9 5 1 9Z" fill="#638fb4"/></marker></defs>
+<rect x="1" y="1" width="1118" height="558" rx="19" fill="#f1f8fc" stroke="#cddfeb"/>
+<text x="42" y="43" class="eyebrow">CORE: TASKS AND APPROVED CODE ACCESS</text>
+<path class="core both active" d="M297 140H395"/>
+<path class="core both active" d="M726 140H823"/>
+<path class="core active" d="M560 201V262"/>
+<path class="core active" d="M725 312H821"/>
+<path class="optional" d="M157 194V461H395"/>
+<path class="optional" d="M1073 140H1091V461H730"/>
+<rect class="card" x="50" y="88" width="245" height="105" rx="16"/>
+<rect class="hub" x="398" y="78" width="325" height="123" rx="18"/>
+<rect class="card" x="826" y="88" width="245" height="105" rx="16"/>
+<rect class="card" x="398" y="266" width="325" height="92" rx="16"/>
+<rect class="card" x="824" y="266" width="247" height="92" rx="16"/>
+<rect class="memory" x="398" y="418" width="329" height="94" rx="17"/>
+<text class="label" x="76" y="135">ChatGPT</text>
+<text class="sub" x="76" y="164">Code · Test · Review</text>
+<text class="label" x="431" y="124">GPT Codex Flow</text>
+<text class="sub" x="431" y="151">Task Inbox + Handoff</text>
+<text class="sub" x="431" y="177">Project-scoped MCP</text>
+<text class="label" x="849" y="135">Codex</text>
+<text class="sub" x="849" y="164">Code · Test · Review</text>
+<text class="label" x="426" y="306">Approved project</text>
+<text class="sub" x="426" y="332">Local files and Git</text>
+<text class="label" x="844" y="306">Review &amp; resume</text>
+<text class="sub" x="844" y="332">Git diff + task state</text>
+<circle class="glow" cx="427" cy="441" r="5"/>
+<text class="label" x="446" y="451">Notion knowledge</text>
+<text class="sub" x="426" y="483">Optional · client-authorized</text>
+<text x="43" y="540" class="sub">Dashed paths: agents document verified long-term knowledge only when opted in. No background sync or Notion handoff.</text>
+</svg>

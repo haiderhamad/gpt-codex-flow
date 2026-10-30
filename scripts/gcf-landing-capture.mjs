@@ -40,7 +40,7 @@ try{
    assert.equal(await evaluate(`getComputedStyle(document.querySelector('.scene-image')).display`),'block','mobile overview stays visible');
    assert.equal(await evaluate(`document.querySelector('#motion-toggle')`),null,'no animation pause button');
     assert.equal(await evaluate(`document.querySelector('.illustration figcaption')`),null,'no hero caption');
-    assert.ok(await evaluate(`[...document.querySelectorAll('.scene-image,.usecase-visual')].every(img=>img.getAttribute('src').endsWith('#paused'))`),'reduced-motion SVGs pause');
+    assert.ok(await evaluate(`[...document.querySelectorAll('.scene-image,.usecase-visual,.memory-visual')].every(img=>img.getAttribute('src').endsWith('#paused'))`),'reduced-motion SVGs pause');
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('.site-header')).position`),'sticky','header stays sticky');
     for(const target of ['workflow','capabilities','connect','dashboard']){
       const measure=await evaluate(`(async()=>{
@@ -112,8 +112,17 @@ try{
   await send('Page.navigate',{url:pathToFileURL(join(repo,'docs/gcf-preview',asset)).href});await wait(100);
   assert.equal(await evaluate(`getComputedStyle(document.querySelector('${selector}')).animationName`),'none',asset+' reduced motion');
  }
+ const memorySvg=pathToFileURL(join(repo,'docs/gcf-preview/notion-memory-flow.svg')).href;
+ await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'no-preference'}]});
+ await send('Page.navigate',{url:memorySvg});await wait(160);
+ assert.ok(await evaluate(`document.querySelector('.optional').getAnimations().some(a=>a.playState==='running')`),'optional Notion path animation must run');
+ await send('Page.navigate',{url:memorySvg+'#paused'});await wait(110);
+ assert.equal(await evaluate(`getComputedStyle(document.querySelector('.optional')).animationName`),'none','optional memory diagram pause fragment');
+ await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+ await send('Page.navigate',{url:memorySvg});await wait(110);
+ assert.equal(await evaluate(`getComputedStyle(document.querySelector('.optional')).animationName`),'none','optional memory diagram reduced motion');
  assert.deepEqual(errors,[],'browser console/runtime errors');
- writeFileSync(join(output,'verification.json'),JSON.stringify({browser:'Installed Chrome via CDP',motion:'Reduced motion emulated',fixtures:'Static Landing in installed Chrome; temporary Chrome profile; no live Codex, tunnel or private data',findings,checks:['No horizontal overflow','All images decoded; no broken assets','No console errors','External SVG normal/reduced motion','Arrow-key connection tabs','Copy command value','SVG animation advances; paused fragment and reduced-motion preference stop motion','Control Center has a separate browser regression'],errors},null,2));
+ writeFileSync(join(output,'verification.json'),JSON.stringify({browser:'Installed Chrome via CDP',motion:'Reduced motion emulated',fixtures:'Static Landing in installed Chrome; temporary Chrome profile; no live Codex, tunnel or private data',findings,checks:['No horizontal overflow','All images decoded; no broken assets','No console errors','External SVG normal/reduced motion','Arrow-key connection tabs','Copy command value','SVG animation advances; paused fragment and reduced-motion preference stop motion','Optional Notion animation runs, pauses and respects reduced motion','Control Center has a separate browser regression'],errors},null,2));
  console.log(`REAL_BROWSER_VERIFIED: static Landing at desktop 1440, tablet 768, mobile 390/375, landscape 844; ${findings.length} layouts; keyboard, Copy, reduced motion; no overflow/errors. Screenshots: ${output}`);
 }finally{
  try{ws?.close()}catch{}chrome.kill('SIGTERM');await wait(250);rmSync(profile,{recursive:true,force:true});

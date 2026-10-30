@@ -32,6 +32,7 @@
 <article class="feature"><h3>Git review &amp; verification</h3><p>Inspect real diffs and test evidence before continuing.</p></article>
 <article class="feature"><h3>Local Control Center</h3><p>Manage Projects, Connections, Workflow and Status in your browser.</p></article>
 </div>
+<article class="feature" id="notion-memory"><h3>Optional Notion project memory</h3><p>Opt in from Control Center and connect Notion separately in your ChatGPT or Codex client. Keep verified decisions and architecture in one reusable project hub; live tasks and handoffs stay in GCF. No automatic background sync. <a href="https://github.com/haiderhamad/gpt-codex-flow#optional-agent-assisted-notion-project-memory">Setup and privacy details</a>.</p><figure class="memory-flow"><img class="memory-visual" src="./notion-memory-flow.svg" width="1120" height="560" loading="lazy" decoding="async" alt="Animated diagram: ChatGPT and Codex work through GPT Codex Flow with an approved project and review; dashed connections independently represent optional client-authorized Notion knowledge. No automatic synchronization."><figcaption>Solid arrows: normal project work. Dashed paths: optional Notion documentation, never automatic sync. <a href="./notion-memory-flow.svg">View full-size diagram</a>.</figcaption></figure></article>
 <div id="use-cases" class="continuity"><h3>Come back to a task with its recorded context.</h3><img class="usecase-visual" src="./use-case-flow.svg" width="1080" height="260" loading="lazy" alt="Illustrative sequence: Task Inbox carries context, either client returns Git diffs and tests, and a fresh conversation resumes the saved project task."><p class="micro">Recorded GCF activity only. No hidden conversation sync or automatic model switching.</p></div></section>
 <section id="connect" class="section setup"><div class="wrap"><h2>Start with one folder.</h2><p class="lead">Node.js 20+, npm and Git. Install from the <a href="https://github.com/haiderhamad/gpt-codex-flow">public GitHub repository</a>. The npm package is not published; use the source installation below.</p>
 <div class="setup-row"><div><span class="stepno">STEP 1</span><h3>Prepare the bridge</h3><p>Clone the public repository, enter its folder and install the locked dependencies. Run these commands in Terminal; <code>npm ci</code> must run inside <code>gpt-codex-flow</code>.</p></div><div class="terminal"><div class="termhead"><span>Terminal · project folder</span><button type="button" class="copy" data-copy="prepare">Copy</button></div><pre id="prepare">git clone https://github.com/haiderhamad/gpt-codex-flow.git
@@ -78,7 +79,7 @@ window.addEventListener('load',()=>{
 });
 const motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 function syncReducedMotion(){
-  for(const img of document.querySelectorAll('.scene-image,.usecase-visual')){
+  for(const img of document.querySelectorAll('.scene-image,.usecase-visual,.memory-visual')){
     const source=img.getAttribute('src').split('#')[0];
     const next=source+(motionPreference.matches?'#paused':'');
     if(img.getAttribute('src')!==next)img.setAttribute('src',next);
